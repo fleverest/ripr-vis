@@ -39,17 +39,19 @@ jobs:
         with:
           # ripr is not on CRAN, and two of its dependencies need pinning:
           #
-          #   S7      — main changed `new_object()`'s parent check and breaks
-          #             `multinomial_family()`; v0.2.1 is the last that works.
+          #   S7      — 0.2.1 does not build on R >= 4.6: its init.c reads
+          #             `R_NamespaceRegistry`, which R no longer declares.
+          #             0.2.2 dropped it and works with current ripr, so this
+          #             is a floor rather than an exact pin.
           #   rlang   — ripr calls `rlang::check_number_whole()` and friends,
           #             which no released rlang exports. Drop this line once
           #             they are exported upstream or vendored into ripr.
           packages: |
             any::jsonlite
-            RConsortium/S7@v0.2.1
+            RConsortium/S7@v0.2.2
             r-lib/rlang
             fleverest/ripr
-          cache-version: 2
+          cache-version: 3
 
       # The fits and the certifications are the slow part, and knitr keys its
       # cache on chunk contents, so restoring across commits is safe: touching

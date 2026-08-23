@@ -67,14 +67,18 @@ fit_part <- function(state, q_pmf) {
       state@snapshots,
       \(s) signif(q_pmf / mixture_pmf(s$atoms, s$weights), 7)
     ),
-    support = lapply(state@snapshots, \(s) list(
-      atoms = cols(do.call(cbind, s$atoms)),
-      weights = I(unlist(s$weights))
-    )),
+    support = lapply(state@snapshots, \(s) {
+      list(
+        atoms = cols(do.call(cbind, s$atoms)),
+        weights = I(unlist(s$weights))
+      )
+    }),
     kl = I(trace$kl[row]),
     gap = I(trace$gap[row]),
     # list column, and NA on any row that did not sweep
-    gap_theta = lapply(trace$gap_theta[row], \(v) if (all(is.na(v))) NULL else as.vector(v)),
+    gap_theta = lapply(trace$gap_theta[row], \(v) {
+      if (all(is.na(v))) NULL else as.vector(v)
+    }),
     phase = I(trace$phase[row])
   )
 }
@@ -83,9 +87,15 @@ bnb_part <- function(nodes) {
   certificate <- attr(nodes, "certificate")
   list(
     nodes = list(
-      subnull = nodes$subnull, id = nodes$id, parent = nodes$parent,
-      depth = nodes$depth, born = nodes$born, retired = nodes$retired,
-      fate = nodes$fate, upper = nodes$upper, volume = nodes$volume,
+      subnull = nodes$subnull,
+      id = nodes$id,
+      parent = nodes$parent,
+      depth = nodes$depth,
+      born = nodes$born,
+      retired = nodes$retired,
+      fate = nodes$fate,
+      upper = nodes$upper,
+      volume = nodes$volume,
       vertices = lapply(nodes$vertices, cols)
     ),
     # `upper[[s]][t]` is subnull s's certified bound after iteration t and
@@ -95,8 +105,10 @@ bnb_part <- function(nodes) {
     upper = lapply(attr(nodes, "trace"), I),
     lower = lapply(attr(nodes, "incumbent_trace"), I),
     certificate = list(
-      sup_ub = certificate$sup_ub, sup_lb = certificate$sup_lb,
-      iterations = I(certificate$iterations), tol = TOL
+      sup_ub = certificate$sup_ub,
+      sup_lb = certificate$sup_lb,
+      iterations = I(certificate$iterations),
+      tol = TOL
     )
   )
 }
@@ -129,14 +141,21 @@ Q_plur <- family(as.vector(q_plur))
 # `record_gap = TRUE` on both verbs: the sweep is not free, but it is what puts
 # a gap and a maximiser on every step rather than every second one.
 set.seed(1L)
-state_plur <- ripr_init(Q_plur, plurality, control = ripr_control(snapshot = "all"))
+state_plur <- ripr_init(
+  Q_plur,
+  plurality,
+  control = ripr_control(snapshot = "all")
+)
 for (i in seq_len(30L)) {
   state_plur <- state_plur |>
     fw_step(record_gap = TRUE) |>
     em_step(record_gap = TRUE)
 }
 fit_plur <- ripr_finish(
-  state_plur, reoptimise = TRUE, identify = TRUE, record_gap = TRUE
+  state_plur,
+  reoptimise = TRUE,
+  identify = TRUE,
+  record_gap = TRUE
 )
 ```
 
@@ -144,7 +163,8 @@ fit_plur <- ripr_finish(
 #| include: false
 #| cache: true
 #| dependson: ["plurality-fit"]
-X_plur <- likelihood(Q_plur, label = "Q") / likelihood(fit_plur$P_star, label = "P*")
+X_plur <- likelihood(Q_plur, label = "Q") /
+  likelihood(fit_plur$P_star, label = "P*")
 nodes_plur <- certify_trace(X_plur, plurality, tol = TOL)
 ```
 
@@ -179,7 +199,10 @@ for (i in seq_len(30L)) {
     em_step(record_gap = TRUE)
 }
 fit_med <- ripr_finish(
-  state_med, reoptimise = TRUE, identify = TRUE, record_gap = TRUE
+  state_med,
+  reoptimise = TRUE,
+  identify = TRUE,
+  record_gap = TRUE
 )
 ```
 
@@ -187,7 +210,8 @@ fit_med <- ripr_finish(
 #| include: false
 #| cache: true
 #| dependson: ["medial-fit"]
-X_med <- likelihood(Q_med, label = "Q") / likelihood(fit_med$P_star, label = "P*")
+X_med <- likelihood(Q_med, label = "Q") /
+  likelihood(fit_med$P_star, label = "P*")
 nodes_med <- certify_trace(X_med, medial, tol = TOL)
 ```
 
@@ -196,14 +220,21 @@ nodes_med <- certify_trace(X_med, medial, tol = TOL)
 #| cache: true
 #| dependson: ["plurality-certify", "medial-certify", "helpers"]
 runs <- list(
-  lattice = list(n = N_TRIALS, outcomes = cols(t(Y)), log_choose = I(log_choose)),
+  lattice = list(
+    n = N_TRIALS,
+    outcomes = cols(t(Y)),
+    log_choose = I(log_choose)
+  ),
   plurality = c(
     list(
       seeds = lapply(plurality@subnulls, \(s) cols(s@vertices)),
       marks = list(q = cols(q_plur), weights = I(1)),
       labels = list(
         title = "plurality",
-        subnulls = c("\u03b8\u2081 \u2264 \u03b8\u2082", "\u03b8\u2081 \u2264 \u03b8\u2083")
+        subnulls = c(
+          "\u03b8\u2081 \u2264 \u03b8\u2082",
+          "\u03b8\u2081 \u2264 \u03b8\u2083"
+        )
       ),
       fit = fit_part(state_plur, pmf(as.vector(q_plur)))
     ),
@@ -225,13 +256,15 @@ runs <- list(
 
 message(sprintf(
   "plurality: gap %.3e, sup_ub %.9f, %s subdivisions, %d fit steps",
-  fit_plur$gap_final, attr(nodes_plur, "certificate")$sup_ub,
+  fit_plur$gap_final,
+  attr(nodes_plur, "certificate")$sup_ub,
   paste(attr(nodes_plur, "certificate")$iterations, collapse = "/"),
   length(runs$plurality$fit$ratio)
 ))
 message(sprintf(
   "medial:    gap %.3e, sup_ub %.9f, %s subdivisions, %d fit steps",
-  fit_med$gap_final, attr(nodes_med, "certificate")$sup_ub,
+  fit_med$gap_final,
+  attr(nodes_med, "certificate")$sup_ub,
   paste(attr(nodes_med, "certificate")$iterations, collapse = "/"),
   length(runs$medial$fit$ratio)
 ))
@@ -245,9 +278,11 @@ message(sprintf(
 # the setup chunk's `library()` never happens. `na = "null"` matters: the
 # default writes NA as the string "NA", which reads as a valid number on the
 # other side.
-ojs_define(runs_json = as.character(
-  jsonlite::toJSON(runs, auto_unbox = TRUE, digits = 12, na = "null")
-))
+ojs_define(
+  runs_json = as.character(
+    jsonlite::toJSON(runs, auto_unbox = TRUE, digits = 12, na = "null")
+  )
+)
 ```
 
 ## The plurality problem {.slide}

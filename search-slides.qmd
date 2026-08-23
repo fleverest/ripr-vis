@@ -1,0 +1,1144 @@
+---
+title: "Certifying an e-variable"
+subtitle: "Reverse information projection, then branch and bound"
+format:
+  revealjs:
+    embed-resources: true
+    theme: simple
+    css: search-slides.css
+    include-in-header: d3-header.html
+    html-math-method: mathml
+    slide-number: false
+    width: 1280
+    height: 760
+execute:
+  echo: false
+  warning: false
+---
+
+```{r setup}
+#| include: false
+library(ripr)
+library(jsonlite)
+
+K <- 3L
+N_TRIALS <- 20L
+TOL <- 1e-9
+
+family <- multinomial_family(n_trials = N_TRIALS, k = K)
+
+# The outcome lattice and its multinomial coefficients. Exported once: the OJS
+# side rebuilds the Bernstein basis from these, so a fitted iterate crosses as
+# 231 numbers rather than as a grid of evaluations.
+Y <- as.matrix(enumerate_space(family@sample_space))
+log_choose <- lfactorial(N_TRIALS) - rowSums(lfactorial(Y))
+
+pmf <- function(theta) {
+  as.vector(exp(log_choose + Y %*% log(pmax(theta, 1e-300))))
+}
+
+mixture_pmf <- function(atoms, weights) {
+  as.vector(apply(do.call(cbind, atoms), 2L, pmf) %*% unlist(weights))
+}
+
+cols <- function(M) lapply(seq_len(ncol(M)), \(i) M[, i])
+```
+
+```{r helpers}
+#| include: false
+
+# G_i(theta) = E_theta[Q / P_i] is a polynomial in theta whose Bernstein
+# coefficients on the simplex are exactly the pointwise ratios Q(y) / P_i(y), so
+# that vector is all the OJS side needs to draw the field at step i.
+fit_part <- function(state, q_pmf) {
+  trace <- state@trace
+  key <- function(v) paste(v[c("fw", "lb", "em", "weight")], collapse = "/")
+  row <- match(
+    vapply(state@snapshots, \(s) key(s$iters), ""),
+    apply(trace[, c("fw", "lb", "em", "weight")], 1L, key)
+  )
+
+  # `gap` and `gap_theta` describe the mixture the row *produced*, for every
+  # verb, so both line up with the snapshot on the same row. `gap_theta` is
+  # where the gap is attained -- the exact maximiser of G over H0, which is what
+  # the oracle marker on the field points at.
+  list(
+    ratio = lapply(
+      state@snapshots,
+      \(s) signif(q_pmf / mixture_pmf(s$atoms, s$weights), 7)
+    ),
+    support = lapply(state@snapshots, \(s) list(
+      atoms = cols(do.call(cbind, s$atoms)),
+      weights = I(unlist(s$weights))
+    )),
+    kl = I(trace$kl[row]),
+    gap = I(trace$gap[row]),
+    # list column, and NA on any row that did not sweep
+    gap_theta = lapply(trace$gap_theta[row], \(v) if (all(is.na(v))) NULL else as.vector(v)),
+    phase = I(trace$phase[row])
+  )
+}
+
+bnb_part <- function(nodes) {
+  certificate <- attr(nodes, "certificate")
+  list(
+    nodes = list(
+      subnull = nodes$subnull, id = nodes$id, parent = nodes$parent,
+      depth = nodes$depth, born = nodes$born, retired = nodes$retired,
+      fate = nodes$fate, upper = nodes$upper, volume = nodes$volume,
+      vertices = lapply(nodes$vertices, cols)
+    ),
+    # `upper[[s]][t]` is subnull s's certified bound after iteration t and
+    # `lower[[s]][t]` the best value attained by then: the enclosure the search
+    # may claim at t. `I()` throughout, or `auto_unbox` collapses a
+    # single-subnull null to a scalar where an array is expected.
+    upper = lapply(attr(nodes, "trace"), I),
+    lower = lapply(attr(nodes, "incumbent_trace"), I),
+    certificate = list(
+      sup_ub = certificate$sup_ub, sup_lb = certificate$sup_lb,
+      iterations = I(certificate$iterations), tol = TOL
+    )
+  )
+}
+```
+
+```{r plurality-null}
+#| include: false
+# H0 = union_j {theta : theta_1 <= theta_j}: candidate 1 does not win outright.
+# Each facet is a simplex with the tie point replacing e_1, and the two overlap
+# where candidate 1 trails both rivals.
+plurality <- null_model(
+  family,
+  lapply(2:K, function(j) {
+    vertices <- diag(K)
+    vertices[, 1L] <- replace(numeric(K), c(1L, j), 0.5)
+    simplex_region(vertices = vertices)
+  })
+)
+
+# A margin small enough that the null is not trivially far away: a wide one puts
+# the projection in a corner and both the fit and the search end immediately.
+q_plur <- matrix(c(0.40, 0.34, 0.26), ncol = 1L)
+Q_plur <- family(as.vector(q_plur))
+```
+
+```{r plurality-fit}
+#| include: false
+#| cache: true
+#| dependson: ["setup", "plurality-null"]
+# `record_gap = TRUE` on both verbs: the sweep is not free, but it is what puts
+# a gap and a maximiser on every step rather than every second one.
+set.seed(1L)
+state_plur <- ripr_init(Q_plur, plurality, control = ripr_control(snapshot = "all"))
+for (i in seq_len(30L)) {
+  state_plur <- state_plur |>
+    fw_step(record_gap = TRUE) |>
+    em_step(record_gap = TRUE)
+}
+fit_plur <- ripr_finish(
+  state_plur, reoptimise = TRUE, identify = TRUE, record_gap = TRUE
+)
+```
+
+```{r plurality-certify}
+#| include: false
+#| cache: true
+#| dependson: ["plurality-fit"]
+X_plur <- likelihood(Q_plur, label = "Q") / likelihood(fit_plur$P_star, label = "P*")
+nodes_plur <- certify_trace(X_plur, plurality, tol = TOL)
+```
+
+```{r medial-null}
+#| include: false
+# H0: no candidate reaches a majority. One subnull, and it touches no vertex of
+# the simplex, so the bisection has nowhere to run to.
+medial <- null_model(
+  family,
+  list(simplex_region(
+    vertices = cbind(c(0.5, 0.5, 0), c(0.5, 0, 0.5), c(0, 0.5, 0.5))
+  ))
+)
+
+# One dirac per candidate leading, equally weighted, so Q is a genuine mixture
+# rather than a single multinomial.
+q_med <- cbind(c(0.6, 0.2, 0.2), c(0.2, 0.6, 0.2), c(0.2, 0.2, 0.6))
+W_med <- finite_mixing(components = q_med, weights = rep(1 / 3, 3L))
+Q_med <- family(W_med)
+```
+
+```{r medial-fit}
+#| include: false
+#| cache: true
+#| dependson: ["setup", "medial-null"]
+# Alternating steps: Frank--Wolfe adds an atom, EM reweights what is there.
+set.seed(2L)
+state_med <- ripr_init(Q_med, medial, control = ripr_control(snapshot = "all"))
+for (i in seq_len(30L)) {
+  state_med <- state_med |>
+    fw_step(record_gap = TRUE) |>
+    em_step(record_gap = TRUE)
+}
+fit_med <- ripr_finish(
+  state_med, reoptimise = TRUE, identify = TRUE, record_gap = TRUE
+)
+```
+
+```{r medial-certify}
+#| include: false
+#| cache: true
+#| dependson: ["medial-fit"]
+X_med <- likelihood(Q_med, label = "Q") / likelihood(fit_med$P_star, label = "P*")
+nodes_med <- certify_trace(X_med, medial, tol = TOL)
+```
+
+```{r payload}
+#| include: false
+#| cache: true
+#| dependson: ["plurality-certify", "medial-certify", "helpers"]
+runs <- list(
+  lattice = list(n = N_TRIALS, outcomes = cols(t(Y)), log_choose = I(log_choose)),
+  plurality = c(
+    list(
+      seeds = lapply(plurality@subnulls, \(s) cols(s@vertices)),
+      marks = list(q = cols(q_plur), weights = I(1)),
+      labels = list(
+        title = "plurality",
+        subnulls = c("\u03b8\u2081 \u2264 \u03b8\u2082", "\u03b8\u2081 \u2264 \u03b8\u2083")
+      ),
+      fit = fit_part(state_plur, pmf(as.vector(q_plur)))
+    ),
+    bnb_part(nodes_plur)
+  ),
+  medial = c(
+    list(
+      seeds = lapply(medial@subnulls, \(s) cols(s@vertices)),
+      marks = list(q = cols(q_med), weights = I(rep(1 / 3, 3L))),
+      labels = list(
+        title = "medial",
+        subnulls = "\u03b8\u2c7c \u2264 \u00bd for every j"
+      ),
+      fit = fit_part(state_med, mixture_pmf(list(q_med), list(rep(1 / 3, 3L))))
+    ),
+    bnb_part(nodes_med)
+  )
+)
+
+message(sprintf(
+  "plurality: gap %.3e, sup_ub %.9f, %s subdivisions, %d fit steps",
+  fit_plur$gap_final, attr(nodes_plur, "certificate")$sup_ub,
+  paste(attr(nodes_plur, "certificate")$iterations, collapse = "/"),
+  length(runs$plurality$fit$ratio)
+))
+message(sprintf(
+  "medial:    gap %.3e, sup_ub %.9f, %s subdivisions, %d fit steps",
+  fit_med$gap_final, attr(nodes_med, "certificate")$sup_ub,
+  paste(attr(nodes_med, "certificate")$iterations, collapse = "/"),
+  length(runs$medial$fit$ratio)
+))
+```
+
+```{r handoff}
+#| include: false
+#| cache: false
+# `ojs_define()` cannot sit in a cached chunk, so everything above is cached and
+# only this re-runs. `jsonlite::` rather than a bare call because on a cache hit
+# the setup chunk's `library()` never happens. `na = "null"` matters: the
+# default writes NA as the string "NA", which reads as a valid number on the
+# other side.
+ojs_define(runs_json = as.character(
+  jsonlite::toJSON(runs, auto_unbox = TRUE, digits = 12, na = "null")
+))
+```
+
+## The plurality problem {.slide}
+
+::: {.stage .wide}
+::: {.left}
+```{ojs}
+drawProblem(plur)
+```
+:::
+
+::: {.right .statement}
+Counts over three candidates,
+$$Y \sim \mathrm{Multinomial}(n, \theta), \qquad \theta \in \Delta^2, \quad n = 20 .$$
+
+The alternative is a single multinomial — one candidate leads by a small margin:
+$$Q = \mathrm{Multinomial}(n, q), \qquad q = (0.40,\ 0.34,\ 0.26).$$
+
+The null says candidate 1 does not win outright — a union of two facets,
+overlapping where candidate 1 trails both rivals:
+$$H_0 : P \in \mathcal{P}_0 = \bigcup_{j \neq 1}
+   \{P_\theta : \theta_1 \leq \theta_j\} .$$
+
+We want the reverse information projection of $Q$ onto the convex hull of
+$\mathcal{P}_0$ — a hull over *measures*, since $\mathcal{P}_0$ itself is not
+convex:
+$$P^\star = \operatorname*{arg\,min}_{P \in \mathrm{conv}(\mathcal{P}_0)}
+   D_{\mathrm{KL}}(Q \,\|\, P).$$
+:::
+:::
+
+::: {.caption}
+Grey is the null, the black point the support of $Q$. With $K = 3$ the parameter
+is a point in the triangle, so the whole problem is drawable.
+:::
+
+```{ojs}
+//| output: false
+// vendored in the header rather than require()d, so the deck runs offline
+d3 = window.d3
+
+// `ojs_define()` may deliver a length-1 character vector as a string or as a
+// one-element array depending on version; accept both.
+runs = JSON.parse(typeof runs_json === "string" ? runs_json : runs_json[0])
+
+prepare = function (raw) {
+  const ex = Object.assign({}, raw);
+  const N = ex.nodes;
+  ex.node = N.id.map((_, i) => ({
+    subnull: N.subnull[i], id: N.id[i], parent: N.parent[i], depth: N.depth[i],
+    born: N.born[i], retired: N.retired[i], fate: N.fate[i],
+    upper: N.upper[i], volume: N.volume[i], V: N.vertices[i]
+  }));
+  ex.subnulls = [...new Set(ex.node.map(d => d.subnull))].sort(d3.ascending);
+  ex.iters = [].concat(ex.certificate.iterations);
+  ex.T = d3.max(ex.iters);
+  // Each subnull is searched independently, so its own run length is what the
+  // panels and the play loop should use.
+  ex.Tof = i => ex.iters[i];
+  ex.byId = new Map(ex.node.map(d => [d.subnull + ":" + d.id, d]));
+  ex.nFit = ex.fit.ratio.length;
+  // A trace shorter than T means that subnull converged first; hold its last
+  // value rather than letting the window vanish from the panel.
+  ex.win = (s, t) => {
+    const lo = ex.lower[s - 1], hi = ex.upper[s - 1];
+    if (t < 1) return null;
+    const i = Math.min(t, lo.length) - 1;
+    return {lo: lo[i], hi: hi[i]};
+  };
+  return ex;
+}
+
+plur = prepare(runs.plurality)
+med = prepare(runs.medial)
+```
+
+```{ojs}
+//| output: false
+// --- shared geometry --------------------------------------------------------
+// e_1 at the apex. For the plurality null H0 is the region away from the apex,
+// which reads the way the hypothesis is stated; the medial triangle is central,
+// so the same orientation serves both.
+CORNERS = [[250, 32], [22, 426], [478, 426]]
+
+toXY = b => [
+  b[0] * CORNERS[0][0] + b[1] * CORNERS[1][0] + b[2] * CORNERS[2][0],
+  b[0] * CORNERS[0][1] + b[1] * CORNERS[1][1] + b[2] * CORNERS[2][1]
+]
+
+toBary = function (x, y) {
+  const [A, B, C] = CORNERS;
+  const det = (B[1] - C[1]) * (A[0] - C[0]) + (C[0] - B[0]) * (A[1] - C[1]);
+  const b0 = ((B[1] - C[1]) * (x - C[0]) + (C[0] - B[0]) * (y - C[1])) / det;
+  const b1 = ((C[1] - A[1]) * (x - C[0]) + (A[0] - C[0]) * (y - C[1])) / det;
+  return [b0, b1, 1 - b0 - b1];
+}
+
+poly = V => "M" + V.map(v => toXY(v).map(z => z.toFixed(2)).join(",")).join("L") + "Z"
+SIMPLEX = poly([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+
+CLAY = "#b8452f"
+INK = "#1f1d1a"
+MUTED = "#7b746a"
+COOL = "#2c6e8f"
+
+// theta_i = 1 at the corner opposite the i-th edge.
+vertexLabels = function (g, k = 1) {
+  const at = [
+    {p: [1, 0, 0], dx: 0, dy: -13},
+    {p: [0, 1, 0], dx: -14, dy: 17},
+    {p: [0, 0, 1], dx: 14, dy: 17}
+  ];
+  g.append("g").selectAll("text").data(at).join("text")
+    .attr("x", d => toXY(d.p)[0] + d.dx / k)
+    .attr("y", d => toXY(d.p)[1] + d.dy / k)
+    .attr("text-anchor", "middle")
+    .attr("font-size", 15 / k).attr("fill", INK)
+    .attr("font-family", "'Iowan Old Style', Palatino, Georgia, serif")
+    .attr("font-style", "italic")
+    .html((d, i) => `\u03b8<tspan font-size="${10.5 / k}" dy="${3 / k}">${i + 1}</tspan>`);
+}
+
+// Area proportional to weight, so r goes as sqrt(w) with a floor: a
+// concentrated mixture would otherwise draw its small atoms at a size
+// indistinguishable from absent, the more misleading of the two failures.
+atomRadius = (w, wmax, max = 4.4, min = 1.2) =>
+  Math.max(min, max * Math.sqrt(w / wmax))
+```
+
+```{ojs}
+//| output: false
+// --- the problem, stated ----------------------------------------------------
+drawProblem = function (ex) {
+  const svg = d3.create("svg").attr("viewBox", "0 0 500 456")
+    .attr("width", "100%").style("height", "auto").style("overflow", "visible");
+  const g = svg.append("g");
+
+  // One path holding every facet as a subpath, so the union fills as a single
+  // region: stroking the facets separately would draw a boundary through the
+  // middle of H0 where they overlap, and filling them as separate paths leaves
+  // an antialiasing seam along the shared edge.
+  g.append("path").attr("d", ex.seeds.map(poly).join(""))
+    .attr("fill", "#dedad0").attr("stroke", "none");
+  // The facets themselves, dashed, as on the fitting slide.
+  g.append("g").selectAll("path").data(ex.seeds).join("path")
+    .attr("d", poly).attr("fill", "none")
+    .attr("stroke", "#9c9488").attr("stroke-width", 1)
+    .attr("stroke-dasharray", "4 3");
+  g.append("path").attr("d", SIMPLEX)
+    .attr("fill", "none").attr("stroke", "#8d867a").attr("stroke-width", 1.2);
+
+  const wmax = d3.max(ex.marks.weights);
+  g.append("g").selectAll("circle").data(ex.marks.q).join("circle")
+    .attr("cx", p => toXY(p)[0]).attr("cy", p => toXY(p)[1])
+    .attr("r", (p, i) => atomRadius(ex.marks.weights[i], wmax, 6.5, 3.5))
+    .attr("fill", INK);
+
+  vertexLabels(g);
+  return svg.node();
+}
+```
+
+## Fitting the projection {.slide}
+
+::: {.stage}
+::: {.left}
+```{ojs}
+drawField(plur, iPF)
+```
+```{ojs}
+fieldReadout(plur, iPF)
+```
+:::
+
+::: {.right}
+```{ojs}
+drawFitPanels(plur, iPF)
+```
+:::
+:::
+
+::: {.knobs}
+```{ojs}
+viewof iPF = rangeInput(plur.nFit, "step")
+viewof playPF = toggleInput("play")
+```
+:::
+
+```{ojs}
+//| output: false
+tickPF = {
+  if (!playPF) return null;
+  // `invalidation` resolves when this cell is re-evaluated. Without it the old
+  // loop keeps running after the toggle is cleared -- Observable discards a
+  // stale cell's value but cannot interrupt an async body -- so each replay
+  // added another loop and the animation accelerated.
+  let stopped = false;
+  invalidation.then(() => stopped = true);
+  while (!stopped) {
+    await Promises.delay(220);
+    if (stopped) break;
+    const last = plur.nFit;
+    viewof iPF.value = viewof iPF.value >= last ? 1 : viewof iPF.value + 1;
+    viewof iPF.dispatchEvent(new CustomEvent("input"));
+  }
+  return null;
+}
+```
+
+::: {.caption}
+$G_i(\theta) = E_\theta[Q/P_i]$, red where it exceeds one. Frank–Wolfe adds the
+maximiser over the null as an atom; the gap is $\max_{H_0} G_i - 1$, so the fit
+is done when no red is left inside the dashed region.
+:::
+
+```{ojs}
+//| output: false
+// --- the field --------------------------------------------------------------
+// G_i is a polynomial whose Bernstein coefficients are the ratios Q(y)/P_i(y),
+// so the basis is built once and every iterate is then a matrix-vector product.
+// That is why the export is 231 numbers per step, not a grid per step.
+grid = {
+  const nx = 112, ny = 98;
+  // Padded past the simplex: G is a polynomial and is perfectly well defined
+  // outside it, so the field is evaluated everywhere and only the *drawing* is
+  // clipped. Filling the outside with a sentinel instead would put a false
+  // contour along every edge where G > 1 -- a closed loop hugging the boundary
+  // where the true level set is an open arc terminating on it.
+  const pad = 0.06;
+  const w = CORNERS[2][0] - CORNERS[1][0], h = CORNERS[1][1] - CORNERS[0][1];
+  const x0 = CORNERS[1][0] - pad * w, x1 = CORNERS[2][0] + pad * w;
+  const y0 = CORNERS[0][1] - pad * h, y1 = CORNERS[1][1] + pad * h;
+  const dx = (x1 - x0) / (nx - 1), dy = (y1 - y0) / (ny - 1);
+  const Y = runs.lattice.outcomes, lc = runs.lattice.log_choose;
+  const m = Y.length, n = runs.lattice.n;
+  const C = lc.map(Math.exp);
+
+  const npts = nx * ny;
+  const bary = new Float64Array(npts * 3);
+  const inside = new Uint8Array(npts);
+  const basis = new Float64Array(npts * m);
+  const p0 = new Float64Array(n + 1), p1 = new Float64Array(n + 1),
+        p2 = new Float64Array(n + 1);
+
+  for (let j = 0; j < ny; j++)
+    for (let i = 0; i < nx; i++) {
+      const k = j * nx + i;
+      const b = toBary(x0 + i * dx, y0 + j * dy);
+      bary[k * 3] = b[0]; bary[k * 3 + 1] = b[1]; bary[k * 3 + 2] = b[2];
+      inside[k] = b[0] > 1e-9 && b[1] > 1e-9 && b[2] > 1e-9 ? 1 : 0;
+      // powers rather than exp(log): outside the simplex a coordinate is
+      // negative and its logarithm is not available, but the monomial is.
+      p0[0] = p1[0] = p2[0] = 1;
+      for (let e = 1; e <= n; e++) {
+        p0[e] = p0[e - 1] * b[0];
+        p1[e] = p1[e - 1] * b[1];
+        p2[e] = p2[e - 1] * b[2];
+      }
+      for (let c = 0; c < m; c++)
+        basis[k * m + c] = C[c] * p0[Y[c][0]] * p1[Y[c][1]] * p2[Y[c][2]];
+    }
+
+  return {nx, ny, x0, y0, dx, dy, npts, bary, inside, basis, m};
+}
+
+// contour coordinates arrive in grid-index units
+gridPath = d3.geoPath(d3.geoTransform({
+  point(x, y) { this.stream.point(grid.x0 + x * grid.dx, grid.y0 + y * grid.dy); }
+}))
+
+evalField = function (ratio) {
+  const {npts, basis, m} = grid;
+  const z = new Float64Array(npts);
+  for (let k = 0; k < npts; k++) {
+    let g = 0;
+    for (let c = 0; c < m; c++) g += basis[k * m + c] * ratio[c];
+    // Far outside the simplex the polynomial goes negative; -99 there is below
+    // every threshold and the whole region is clipped away in any case.
+    z[k] = g > 0 ? Math.log10(g) : -99;
+  }
+  return z;
+}
+
+// Diverging about G = 1, the only value here that means anything: above it the
+// oracle has somewhere to go, below it that direction is spent.
+fieldColour = d3.scaleLinear()
+  .domain([-1.2, -0.4, 0, 0.4, 1.2])
+  .range(["#e7edf1", "#cbdae3", "#f7f4ec", "#dd9b83", CLAY])
+  .interpolate(d3.interpolateLab).clamp(true)
+```
+
+```{ojs}
+//| output: false
+drawField = function (ex, i) {
+  const svg = d3.create("svg").attr("viewBox", "0 0 500 456")
+    .attr("width", "100%").style("height", "auto").style("overflow", "visible");
+  const clipId = "clip-" + ex.labels.title;
+  svg.append("clipPath").attr("id", clipId).append("path").attr("d", SIMPLEX);
+
+  const j = Math.max(i, 1) - 1;
+  const z = evalField(ex.fit.ratio[j]);
+  const bands = d3.contours().size([grid.nx, grid.ny])
+    .thresholds(d3.range(-1.2, 1.21, 0.1))(z);
+
+  const g = svg.append("g").attr("clip-path", `url(#${clipId})`);
+  g.append("path").attr("d", SIMPLEX).attr("fill", fieldColour(-1.2));
+  g.selectAll("path.band").data(bands).join("path").attr("class", "band")
+    .attr("d", gridPath).attr("fill", d => fieldColour(d.value));
+
+  // The one contour that matters.
+  g.append("g")
+    .selectAll("path")
+    .data(d3.contours().size([grid.nx, grid.ny]).thresholds([0])(z))
+    .join("path")
+    .attr("d", gridPath).attr("fill", "none")
+    .attr("stroke", INK).attr("stroke-width", 1.7);
+
+  const outer = svg.append("g");
+  // The null, so it is clear where the oracle is allowed to look.
+  outer.append("g").selectAll("path").data(ex.seeds).join("path")
+    .attr("d", poly).attr("fill", "none")
+    .attr("stroke", INK).attr("stroke-width", 1).attr("stroke-dasharray", "4 3");
+  outer.append("path").attr("d", SIMPLEX)
+    .attr("fill", "none").attr("stroke", "#8d867a").attr("stroke-width", 1.2);
+
+  // Support of the current iterate, and the alternative for reference.
+  const sup = ex.fit.support[j];
+  const wmax = d3.max(sup.weights);
+  outer.append("g").selectAll("circle").data(sup.atoms).join("circle")
+    .attr("cx", p => toXY(p)[0]).attr("cy", p => toXY(p)[1])
+    .attr("r", (p, k) => atomRadius(sup.weights[k], wmax))
+    .attr("fill", "none").attr("stroke", COOL).attr("stroke-width", 1.2);
+  outer.append("g").selectAll("circle").data(ex.marks.q).join("circle")
+    .attr("cx", p => toXY(p)[0]).attr("cy", p => toXY(p)[1])
+    .attr("r", 3).attr("fill", INK);
+
+  // Where the gap is attained: the maximiser of G over H0, taken from the trace
+  // rather than found on the grid, so it is exact and needs no point-in-null
+  // test here.
+  const target = ex.fit.gap_theta[j];
+  if (target) {
+    const p = toXY(target);
+    outer.append("circle").attr("cx", p[0]).attr("cy", p[1]).attr("r", 6)
+      .attr("fill", "none").attr("stroke", CLAY).attr("stroke-width", 1.8);
+  }
+
+  vertexLabels(outer);
+  return svg.node();
+}
+
+fieldReadout = function (ex, i) {
+  const j = Math.max(i, 1) - 1;
+  const kl = ex.fit.kl[j], gap = ex.fit.gap[j];
+  const f = d3.format(".5f");
+  return html`<div class="readout">${ex.fit.phase[j]}
+    <span class="dim">KL</span> ${f(kl)}
+    <span class="dim">gap</span> ${gap == null ? "—" : d3.format(".2e")(gap)}
+    <span class="dim">growth</span> ${gap == null ? "—" : f(kl - Math.log1p(gap))}</div>`;
+}
+```
+
+```{ojs}
+//| output: false
+// --- fit diagnostics --------------------------------------------------------
+// KL is what the fit minimises; the gap certifies how far it still is from the
+// minimum; the difference KL - log(1 + gap) is the log-growth rate the
+// resulting e-variable is guaranteed. Together they show the third rising as
+// the second falls, which is the whole reason for running the fit to
+// convergence rather than stopping when KL flattens.
+drawFitPanels = function (ex, i) {
+  const W = 420, H = 108, gap = 20, m = {l: 58, r: 10, t: 14, b: 20};
+  const n = ex.nFit;
+  const svg = d3.create("svg")
+    .attr("viewBox", `0 0 ${W} ${3 * H + 2 * gap}`)
+    .attr("width", "100%").style("height", "auto").style("overflow", "visible");
+  const x = d3.scaleLinear([1, n], [m.l, W - m.r]);
+
+  const series = [
+    {
+      label: "KL(Q ‖ P)", log: false, colour: COOL,
+      v: ex.fit.kl.map((k, j) => ({t: j + 1, y: k}))
+    },
+    {
+      label: "gap", log: true, colour: CLAY,
+      v: ex.fit.gap.map((g, j) => ({t: j + 1, y: g}))
+        .filter(d => d.y != null && d.y > 0)
+    },
+    {
+      label: "log-growth  KL − log(1 + gap)", log: false, colour: INK,
+      v: ex.fit.kl.map((k, j) => ({
+        t: j + 1,
+        y: ex.fit.gap[j] == null ? null : k - Math.log1p(ex.fit.gap[j])
+      })).filter(d => d.y != null)
+    }
+  ];
+
+  series.forEach((s, r) => {
+    const g = svg.append("g").attr("transform", `translate(0,${r * (H + gap)})`);
+    const ext = d3.extent(s.v, d => d.y);
+    const y = s.log
+      ? d3.scaleLog(ext, [H - m.b, m.t])
+      : d3.scaleLinear([Math.min(ext[0], 0), ext[1]], [H - m.b, m.t]).nice();
+
+    g.append("g").attr("transform", `translate(0,${H - m.b})`)
+      .call(d3.axisBottom(x).ticks(5).tickSize(3));
+    g.append("g").attr("transform", `translate(${m.l},0)`)
+      .call(s.log
+        ? d3.axisLeft(y).ticks(3, "0.0e").tickSize(3)
+        : d3.axisLeft(y).ticks(3).tickSize(3).tickFormat(d3.format(".3f")));
+
+    g.append("path").datum(s.v).attr("fill", "none")
+      .attr("stroke", s.colour).attr("stroke-width", 1.4)
+      .attr("d", d3.line().x(d => x(d.t)).y(d => y(d.y)));
+
+    const here = s.v.filter(d => d.t <= Math.max(i, 1)).slice(-1)[0];
+    if (here) {
+      g.append("line").attr("x1", x(here.t)).attr("x2", x(here.t))
+        .attr("y1", m.t).attr("y2", H - m.b)
+        .attr("stroke", MUTED).attr("stroke-dasharray", "2 3");
+      g.append("circle").attr("r", 3).attr("fill", s.colour)
+        .attr("cx", x(here.t)).attr("cy", y(here.y));
+    }
+    g.append("text").attr("x", m.l).attr("y", 9)
+      .attr("font-size", 11).attr("fill", MUTED).text(s.label);
+  });
+
+  svg.selectAll(".domain,.tick line").attr("stroke", "#c2bbae");
+  svg.selectAll(".tick text").attr("fill", MUTED).attr("font-size", 9)
+    .attr("font-family", "ui-monospace, Menlo, monospace");
+  return svg.node();
+}
+```
+
+## Certifying the fit {.slide}
+
+::: {.stage}
+::: {.left}
+```{ojs}
+drawSimplex(plur, tPB, sPB, {zoom: zoomPB})
+```
+```{ojs}
+readout(plur, tPB, sPB)
+```
+:::
+
+::: {.right}
+```{ojs}
+drawWindows(plur, tPB, sPB)
+```
+```{ojs}
+drawTree(plur, tPB, sPB)
+```
+:::
+:::
+
+::: {.knobs}
+```{ojs}
+viewof sPB = tabsInput([].concat(plur.labels.subnulls))
+viewof tPB = rangeInput(plur.T, "iteration")
+viewof playPB = toggleInput("play")
+viewof zoomPB = toggleInput("follow live cells")
+```
+:::
+
+```{ojs}
+//| output: false
+tickPB = {
+  if (!playPB) return null;
+  // `invalidation` resolves when this cell is re-evaluated. Without it the old
+  // loop keeps running after the toggle is cleared -- Observable discards a
+  // stale cell's value but cannot interrupt an async body -- so each replay
+  // added another loop and the animation accelerated.
+  let stopped = false;
+  invalidation.then(() => stopped = true);
+  while (!stopped) {
+    await Promises.delay(300);
+    if (stopped) break;
+    const last = plur.Tof(sPB);
+    viewof tPB.value = viewof tPB.value >= last ? 0 : viewof tPB.value + 1;
+    viewof tPB.dispatchEvent(new CustomEvent("input"));
+  }
+  return null;
+}
+```
+
+::: {.caption}
+Repeated bisection, one facet at a time — the two are searched independently.
+The panel is that facet's enclosure $[\text{incumbent},\ \text{bound}]$
+closing; the certified bound is the larger of the two facets'.
+:::
+
+```{ojs}
+//| output: false
+// --- controls ---------------------------------------------------------------
+// `Inputs.*` would be fetched from a CDN at runtime, so these are built from
+// the bundled `html` instead: the deck has to work in a room with no wifi. The
+// getter/setter pair is what lets the play loop drive the slider.
+rangeInput = function (max, label) {
+  const el = html`<input type="range" min="0" max="${max}" step="1" value="0">`;
+  const out = html`<span class="val">0</span>`;
+  const wrap = html`<label class="ctl"><span>${label}</span>${el}${out}</label>`;
+  Object.defineProperty(wrap, "value", {
+    get: () => +el.value,
+    set: v => { el.value = v; out.textContent = v; }
+  });
+  el.oninput = () => {
+    out.textContent = el.value;
+    wrap.dispatchEvent(new CustomEvent("input"));
+  };
+  return wrap;
+}
+
+// A tab strip. The two plurality facets are searched independently, so showing
+// them together makes iteration 1 look like two bisections and mixes two sets of
+// cell boundaries; one at a time is the honest picture. With a single subnull
+// this renders as a static label rather than a control.
+tabsInput = function (labels) {
+  const many = labels.length > 1;
+  const btns = labels.map((t, i) => {
+    const b = html`<button class="tab" type="button">${t}</button>`;
+    if (i === 0) b.classList.add("on");
+    return b;
+  });
+  const wrap = html`<div class="tabs${many ? "" : " single"}">${btns}</div>`;
+  let value = 0;
+  Object.defineProperty(wrap, "value", {get: () => value, set: v => { value = v; }});
+  if (many) btns.forEach((b, i) => b.onclick = () => {
+    btns.forEach(o => o.classList.remove("on"));
+    b.classList.add("on");
+    value = i;
+    wrap.dispatchEvent(new CustomEvent("input"));
+  });
+  return wrap;
+}
+
+toggleInput = function (label, checked = false) {
+  const el = html`<input type="checkbox">`;
+  el.checked = checked;
+  const wrap = html`<label class="ctl">${el}<span>${label}</span></label>`;
+  Object.defineProperty(wrap, "value", {
+    get: () => el.checked, set: v => { el.checked = v; }
+  });
+  el.onchange = () => wrap.dispatchEvent(new CustomEvent("input"));
+  return wrap;
+}
+```
+
+```{ojs}
+//| output: false
+// --- the search -------------------------------------------------------------
+// Every node born by t that has not been split away by t. These tile the
+// subnull exactly at every t, so a frame is a genuine partition of the null and
+// not a sample of one.
+aliveAt = (ex, t, s) => ex.node.filter(d =>
+  (s == null || d.subnull === s) && d.born <= t &&
+  !(d.fate === "split" && d.retired != null && d.retired <= t))
+
+settled = (d, t) => d.fate === "pruned" && d.retired != null && d.retired <= t
+
+drawSimplex = function (ex, t, s, {zoom = false} = {}) {
+  const svg = d3.create("svg").attr("viewBox", "0 0 500 456")
+    .attr("width", "100%").style("height", "auto").style("overflow", "visible");
+
+  // Light = low bound = little left to gain; dark = high = still worth
+  // splitting. Fixed across the run so frames compare.
+  const fill = d3.scaleLinear()
+    .domain(d3.extent(ex.node, d => d.upper))
+    .range(["#f6f2e8", CLAY]).interpolate(d3.interpolateLab).clamp(true);
+
+  // Cells halve in volume at every split, so a fixed view is empty after a
+  // handful of iterations. Following the live cells is the only way the later
+  // frames carry anything; scale then stops being comparable, so it is reported.
+  const sub = ex.subnulls[s];
+  let k = 1;
+  const g = svg.append("g");
+  if (zoom) {
+    const live = aliveAt(ex, t, sub).filter(d => !settled(d, t));
+    if (live.length) {
+      const pts = live.flatMap(d => d.V.map(toXY));
+      const [x0, x1] = d3.extent(pts, p => p[0]);
+      const [y0, y1] = d3.extent(pts, p => p[1]);
+      k = 430 / (Math.max(x1 - x0, y1 - y0, 1e-9) * 1.7);
+      g.attr("transform",
+        `translate(${250 - k * (x0 + x1) / 2},${229 - k * (y0 + y1) / 2}) scale(${k})`);
+    }
+  }
+
+  g.append("path").attr("d", SIMPLEX)
+    .attr("fill", "none").attr("stroke", "#cdc6b8").attr("stroke-width", 1 / k);
+  // The other facets, faintly, so it is clear this is one of several searches
+  // and not the whole null.
+  g.append("g").selectAll("path").data(ex.seeds.filter((d, i) => i !== s))
+    .join("path").attr("d", poly).attr("fill", "none")
+    .attr("stroke", "#bfb8aa").attr("stroke-width", 1 / k)
+    .attr("stroke-dasharray", `${4 / k} ${3 / k}`);
+  g.append("path").attr("d", poly(ex.seeds[s]))
+    .attr("fill", "#fdfcf9").attr("stroke", "none");
+
+  // Only the selected subnull. The facets are searched independently, so
+  // drawing both at once shows two bisections at iteration 1 and leaves the
+  // other search's cell edges crossing this one.
+  g.append("g").selectAll("path").data(aliveAt(ex, t, sub)).join("path")
+    .attr("d", d => poly(d.V))
+    // A pruned cell is proven not to hold the maximum. Grey says the region is
+    // settled, which is the content of a prune; dropping it would leave a hole
+    // and hide how much was ruled out.
+    .attr("fill", d => settled(d, t) ? "#e9e5db" : fill(d.upper))
+    .attr("stroke", d => d.born === t ? INK : settled(d, t) ? "#dcd6ca" : "#948d80")
+    .attr("stroke-width", d => (d.born === t ? 1.8 : settled(d, t) ? 0.35 : 0.5) / k);
+
+  const wmax = d3.max(ex.marks.weights);
+  g.append("g").selectAll("circle").data(ex.marks.q).join("circle")
+    .attr("cx", p => toXY(p)[0]).attr("cy", p => toXY(p)[1])
+    .attr("r", (p, i) => atomRadius(ex.marks.weights[i], wmax, 3.4, 2) / k)
+    .attr("fill", INK);
+
+  vertexLabels(g, k);
+  return svg.node();
+}
+```
+
+```{ojs}
+//| output: false
+// --- the enclosure window ---------------------------------------------------
+// One panel per subnull. The band is [incumbent, bound] at every iteration: the
+// interval the search is entitled to claim. Bisection drives the two ends
+// together, and the panel is that closing, with the window at t picked out.
+drawWindows = function (ex, t, si) {
+  const s = ex.subnulls[si];
+  const lo = ex.lower[si], hi = ex.upper[si];
+  const n = lo.length;
+  // A band panel plus a thin log strip. In value terms the window shuts within
+  // about three iterations and the band looks empty thereafter; on a log axis
+  // the remaining iterations are visibly still working, which is the honest
+  // reading of the same two numbers.
+  const H = 150, strip = 46, W = 420, m = {l: 56, r: 10, t: 14, b: 20};
+  const svg = d3.create("svg").attr("viewBox", `0 0 ${W} ${H + strip + 10}`)
+    .attr("width", "100%").style("height", "auto").style("overflow", "visible");
+  const g = svg.append("g");
+  const x = d3.scaleLinear([1, ex.Tof(si)], [m.l, W - m.r]);
+  const ext = [d3.min(lo), d3.max(hi)];
+  const pad = (ext[1] - ext[0]) * 0.08;
+  const y = d3.scaleLinear([ext[0] - pad, ext[1] + pad], [H - m.b, m.t]);
+  const data = d3.range(n).map(j => ({t: j + 1, lo: lo[j], hi: hi[j]}));
+
+  g.append("g").attr("transform", `translate(0,${H - m.b})`)
+    .call(d3.axisBottom(x).ticks(6).tickSize(3));
+  g.append("g").attr("transform", `translate(${m.l},0)`)
+    .call(d3.axisLeft(y).ticks(4).tickSize(3).tickFormat(d3.format(".3f")));
+
+  // 1 is where a valid e-variable's bound has to land; drawing it says how
+  // little room the search is actually working in.
+  if (y.domain()[0] <= 1 && y.domain()[1] >= 1) {
+    g.append("line").attr("x1", m.l).attr("x2", W - m.r)
+      .attr("y1", y(1)).attr("y2", y(1))
+      .attr("stroke", MUTED).attr("stroke-dasharray", "2 3");
+  }
+
+  g.append("path").datum(data).attr("fill", CLAY).attr("fill-opacity", 0.16)
+    .attr("d", d3.area().curve(d3.curveStepAfter)
+      .x(d => x(d.t)).y0(d => y(d.lo)).y1(d => y(d.hi)));
+  [["hi", CLAY], ["lo", INK]].forEach(([f, col]) =>
+    g.append("path").datum(data).attr("fill", "none")
+      .attr("stroke", col).attr("stroke-width", 1.3)
+      .attr("d", d3.line().curve(d3.curveStepAfter).x(d => x(d.t)).y(d => y(d[f]))));
+
+  const w = ex.win(s, t);
+  if (w) {
+    const px = x(Math.min(t, n));
+    g.append("line").attr("x1", px).attr("x2", px)
+      .attr("y1", y(w.lo)).attr("y2", y(w.hi))
+      .attr("stroke", INK).attr("stroke-width", 2.6);
+    [w.lo, w.hi].forEach(v =>
+      g.append("line").attr("x1", px - 5).attr("x2", px + 5)
+        .attr("y1", y(v)).attr("y2", y(v))
+        .attr("stroke", INK).attr("stroke-width", 2.6));
+  }
+
+  // width on a log axis, sharing the x-scale
+  const gs = g.append("g").attr("transform", `translate(0,${H + 10})`);
+  const wd = data.map(d => ({t: d.t, w: Math.max(d.hi - d.lo, 1e-17)}));
+  const ys = d3.scaleLog(d3.extent(wd, d => d.w), [strip - 12, 2]);
+  gs.append("g").attr("transform", `translate(${m.l},0)`)
+    .call(d3.axisLeft(ys).ticks(2, "0.0e").tickSize(2));
+  gs.append("path").datum(wd).attr("fill", "none")
+    .attr("stroke", CLAY).attr("stroke-width", 1.2)
+    .attr("d", d3.line().curve(d3.curveStepAfter).x(d => x(d.t)).y(d => ys(d.w)));
+  if (w) {
+    gs.append("circle").attr("r", 2.8).attr("fill", INK)
+      .attr("cx", x(Math.min(t, n)))
+      .attr("cy", ys(Math.max(wd[Math.min(t, n) - 1].w, 1e-17)));
+  }
+
+  g.append("text").attr("x", m.l).attr("y", 9)
+    .attr("font-size", 11).attr("fill", MUTED)
+    .text("enclosure over " + [].concat(ex.labels.subnulls)[si]);
+
+  svg.selectAll(".domain,.tick line").attr("stroke", "#c2bbae");
+  svg.selectAll(".tick text").attr("fill", MUTED).attr("font-size", 9)
+    .attr("font-family", "ui-monospace, Menlo, monospace");
+  return svg.node();
+}
+
+readout = function (ex, t, si) {
+  if (t < 1) return html`<div class="readout">&nbsp;</div>`;
+  const w = ex.win(ex.subnulls[si], t);
+  return html`<div class="readout">[${w.lo.toFixed(7)}, ${w.hi.toFixed(7)}]
+    <span class="dim">width ${d3.format(".1e")(Math.max(w.hi - w.lo, 0))}</span></div>`;
+}
+```
+
+```{ojs}
+//| output: false
+// --- branching --------------------------------------------------------------
+// Depth against birth iteration, each node joined to its parent. A max-bound
+// queue can walk straight down one branch, which shows here as a diagonal and
+// is invisible in the geometry once the cells are small.
+drawTree = function (ex, t, si) {
+  const W = 420, H = 118, m = {l: 56, r: 10, t: 12, b: 22};
+  const svg = d3.create("svg").attr("viewBox", `0 0 ${W} ${H}`)
+    .attr("width", "100%").style("height", "auto").style("overflow", "visible");
+  const sub = ex.subnulls[si];
+  const mine = ex.node.filter(d => d.subnull === sub);
+  const x = d3.scaleLinear([0, ex.Tof(si)], [m.l, W - m.r]);
+  const y = d3.scaleLinear(d3.extent(mine, d => d.depth), [H - m.b, m.t]);
+
+  svg.append("g").attr("transform", `translate(0,${H - m.b})`)
+    .call(d3.axisBottom(x).ticks(5).tickSize(3));
+  svg.append("g").attr("transform", `translate(${m.l},0)`)
+    .call(d3.axisLeft(y).ticks(4).tickSize(3));
+
+  const shown = mine.filter(d => d.born <= t);
+  svg.append("g").selectAll("line")
+    .data(shown.filter(d => d.parent != null)).join("line")
+    .attr("x1", d => x(ex.byId.get(d.subnull + ":" + d.parent).born))
+    .attr("y1", d => y(ex.byId.get(d.subnull + ":" + d.parent).depth))
+    .attr("x2", d => x(d.born)).attr("y2", d => y(d.depth))
+    .attr("stroke", "#ddd7cb").attr("stroke-width", 0.7);
+  svg.append("g").selectAll("circle").data(shown).join("circle")
+    .attr("cx", d => x(d.born)).attr("cy", d => y(d.depth)).attr("r", 2.7)
+    .attr("fill", d => d.fate === "split" && d.retired <= t ? "#bbb4a6"
+      : settled(d, t) ? "#dcc9b2" : CLAY);
+
+  svg.append("text").attr("x", m.l).attr("y", 8)
+    .attr("font-size", 11).attr("fill", MUTED).text("depth against birth");
+  svg.selectAll(".domain,.tick line").attr("stroke", "#c2bbae");
+  svg.selectAll(".tick text").attr("fill", MUTED).attr("font-size", 9)
+    .attr("font-family", "ui-monospace, Menlo, monospace");
+  return svg.node();
+}
+```
+
+## The medial-triangle problem {.slide}
+
+::: {.stage .wide}
+::: {.left}
+```{ojs}
+drawProblem(med)
+```
+:::
+
+::: {.right .statement}
+The same family,
+$$Y \sim \mathrm{Multinomial}(n, \theta), \qquad n = 20 .$$
+
+The alternative is now a *mixture* — each candidate leads in turn, equally
+often:
+$$Q = \int \mathrm{Multinomial}(n, \theta)\, \mathrm{d}W(\theta), \qquad
+W = \tfrac{1}{3} \sum_{i=1}^{3} \delta_{q_i},$$
+with $q_1 = (0.6,\ 0.2,\ 0.2)$ and $q_2, q_3$ its permutations.
+
+The null says no candidate reaches a majority — the medial triangle, a single
+region interior to the simplex:
+$$H_0 : P \in \mathcal{P}_0 =
+   \{P_\theta : \theta_j \leq \tfrac{1}{2} \ \text{ for every } j\} .$$
+
+The projection is the same problem:
+$$P^\star = \operatorname*{arg\,min}_{P \in \mathrm{conv}(\mathcal{P}_0)}
+   D_{\mathrm{KL}}(Q \,\|\, P).$$
+:::
+:::
+
+::: {.caption}
+Three atoms of equal weight, each outside the null, and a null touching no
+vertex of the simplex.
+:::
+
+## Fitting the projection {.slide}
+
+::: {.stage}
+::: {.left}
+```{ojs}
+drawField(med, iMF)
+```
+```{ojs}
+fieldReadout(med, iMF)
+```
+:::
+
+::: {.right}
+```{ojs}
+drawFitPanels(med, iMF)
+```
+:::
+:::
+
+::: {.knobs}
+```{ojs}
+viewof iMF = rangeInput(med.nFit, "step")
+viewof playMF = toggleInput("play")
+```
+:::
+
+```{ojs}
+//| output: false
+tickMF = {
+  if (!playMF) return null;
+  // `invalidation` resolves when this cell is re-evaluated. Without it the old
+  // loop keeps running after the toggle is cleared -- Observable discards a
+  // stale cell's value but cannot interrupt an async body -- so each replay
+  // added another loop and the animation accelerated.
+  let stopped = false;
+  invalidation.then(() => stopped = true);
+  while (!stopped) {
+    await Promises.delay(220);
+    if (stopped) break;
+    const last = med.nFit;
+    viewof iMF.value = viewof iMF.value >= last ? 1 : viewof iMF.value + 1;
+    viewof iMF.dispatchEvent(new CustomEvent("input"));
+  }
+  return null;
+}
+```
+
+::: {.caption}
+Steps alternate: Frank–Wolfe adds the maximiser of $G_i$ over the null, then EM
+reweights the atoms already there.
+:::
+
+## Certifying the fit {.slide}
+
+::: {.stage}
+::: {.left}
+```{ojs}
+drawSimplex(med, tMB, sMB, {zoom: zoomMB})
+```
+```{ojs}
+readout(med, tMB, sMB)
+```
+:::
+
+::: {.right}
+```{ojs}
+drawWindows(med, tMB, sMB)
+```
+```{ojs}
+drawTree(med, tMB, sMB)
+```
+:::
+:::
+
+::: {.knobs}
+```{ojs}
+viewof sMB = tabsInput([].concat(med.labels.subnulls))
+viewof tMB = rangeInput(med.T, "iteration")
+viewof playMB = toggleInput("play")
+viewof zoomMB = toggleInput("follow live cells")
+```
+:::
+
+```{ojs}
+//| output: false
+tickMB = {
+  if (!playMB) return null;
+  // `invalidation` resolves when this cell is re-evaluated. Without it the old
+  // loop keeps running after the toggle is cleared -- Observable discards a
+  // stale cell's value but cannot interrupt an async body -- so each replay
+  // added another loop and the animation accelerated.
+  let stopped = false;
+  invalidation.then(() => stopped = true);
+  while (!stopped) {
+    await Promises.delay(300);
+    if (stopped) break;
+    const last = med.Tof(sMB);
+    viewof tMB.value = viewof tMB.value >= last ? 0 : viewof tMB.value + 1;
+    viewof tMB.dispatchEvent(new CustomEvent("input"));
+  }
+  return null;
+}
+```
+
+::: {.caption}
+One subnull, interior to the simplex, so the bisection has no vertex to run to.
+:::

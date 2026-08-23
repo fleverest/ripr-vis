@@ -1,0 +1,36 @@
+# --- Quarto -------------------------------------------------------------------
+/.quarto/
+/_site/
+/_freeze/
+
+# Rendered output. CI renders and publishes it, so committing a 5 MB
+# self-contained HTML on every edit only makes the history heavy.
+/search-slides.html
+
+# Quarto writes a sidecar directory for any document that is not
+# `embed-resources: true`.
+/*_files/
+
+# --- knitr cache --------------------------------------------------------------
+# Restored in CI from actions/cache instead. Keyed on chunk contents, so it is
+# reproducible rather than precious.
+/*_cache/
+
+# --- R ------------------------------------------------------------------------
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# renv keeps the lockfile, not the library
+renv/library/
+renv/local/
+renv/staging/
+renv/python/
+renv/sandbox/
+
+# --- misc ---------------------------------------------------------------------
+node_modules/
+.DS_Store
+*~

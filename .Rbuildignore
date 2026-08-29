@@ -1,0 +1,19 @@
+# The slide deck the package grew out of; it lives beside the package in this
+# repository but is not part of it.
+^search-slides\.qmd$
+^search-slides\.css$
+^search-slides\.html$
+^d3-header\.html$
+^d3\.min\.js$
+^_freeze$
+^.*_cache$
+^.*_files$
+^\.quarto$
+
+^\.github$
+^README\.md$
+^LICENSE\.md$
+^.*\.Rproj$
+^\.Rproj\.user$
+^renv$
+^renv\.lock$

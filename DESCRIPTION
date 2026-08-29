@@ -1,0 +1,39 @@
+Package: riprvis
+Title: Interactive Visualisations for Reverse Information Projections
+Version: 0.1.0
+Authors@R:
+    person("Floyd", "Everest", , "me@floydeverest.com", role = c("aut", "cre"))
+Description: Interactive 'htmlwidgets' visualisations of reverse information
+    projection (RIPr) fits and their branch-and-bound certification, as
+    computed by the 'ripr' package for multinomial families on the
+    two-simplex. Three widgets cover the pipeline: the problem (the null
+    region and the alternative's support), the fit (the Bernstein field
+    G(theta) = E[Q/P] over the simplex with per-step diagnostics), and the
+    certification (the evolving cell partition, enclosure window and search
+    tree). Each widget accepts a plain-list payload, so the package renders
+    saved results without 'ripr' installed; companion data helpers build the
+    payloads directly from 'ripr' objects.
+License: GPL (>= 3)
+URL: https://github.com/fleverest/ripr-vis
+BugReports: https://github.com/fleverest/ripr-vis/issues
+Depends:
+    R (>= 4.1)
+Imports:
+    htmlwidgets,
+    jsonlite
+Suggests:
+    htmltools,
+    knitr,
+    rmarkdown,
+    ripr,
+    S7,
+    shiny,
+    testthat (>= 3.0.0)
+Remotes:
+    fleverest/ripr
+VignetteBuilder: knitr
+Encoding: UTF-8
+Language: en-GB
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
+Config/testthat/edition: 3

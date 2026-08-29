@@ -1,0 +1,120 @@
+---
+title: "Visualising a RIPr fit and its certification"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Visualising a RIPr fit and its certification}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+has_ripr <- requireNamespace("ripr", quietly = TRUE)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = has_ripr
+)
+```
+
+riprvis draws the three stages of building a certified e-variable with
+[ripr](https://github.com/fleverest/ripr): the problem (a composite null and
+a fixed alternative), the fit (the reverse information projection of the
+alternative onto the null), and the certification (a branch-and-bound upper
+bound on the worst-case null expectation). Each stage is one htmlwidget, so
+the visualisations work in the RStudio viewer, R Markdown and Quarto
+documents, and Shiny.
+
+This vignette needs `ripr` installed
+(`remotes::install_github("fleverest/ripr")`); without it the code below is
+shown but not run.
+
+## The problem
+
+The running example is the *plurality* null for a three-category multinomial
+with 20 trials: candidate 1 does not win outright, a union of two overlapping
+simplices. The alternative `Q` puts candidate 1 narrowly ahead.
+
+```{r problem}
+library(ripr)
+library(riprvis)
+
+family <- multinomial_family(n_trials = 20L, k = 3L)
+plurality <- null_model(
+  family,
+  lapply(2:3, function(j) {
+    vertices <- diag(3)
+    vertices[, 1L] <- replace(numeric(3), c(1L, j), 0.5)
+    simplex_region(vertices = vertices)
+  })
+)
+q <- c(0.40, 0.34, 0.26)
+
+problem <- ripr_problem_data(
+  plurality,
+  q = q,
+  title = "plurality",
+  part_labels = c("θ₁ ≤ θ₂", "θ₁ ≤ θ₃")
+)
+ripr_problem(problem)
+```
+
+## Fitting the projection
+
+Alternating Frank–Wolfe and EM steps, with snapshots of every iterate and the
+duality gap swept at every step so the widget can show where the gap is
+attained.
+
+```{r fit}
+set.seed(1L)
+state <- ripr_init(
+  family(q), plurality,
+  control = ripr_control(snapshot = "all")
+)
+for (i in seq_len(15L)) {
+  state <- state |>
+    fw_step(record_gap = TRUE) |>
+    em_step(record_gap = TRUE)
+}
+
+lattice <- ripr_lattice_data(family)
+fit <- ripr_fit_data(state, lattice, q = q)
+ripr_fit(problem, fit, lattice)
+```
+
+Drag the step slider (or press play) to watch the field
+\(G_i(\theta) = E_\theta[Q/P_i]\) drain below one as atoms are added and
+reweighted, while the right-hand panels trace the KL divergence, the gap, and
+the guaranteed log-growth rate.
+
+## Certifying the fit
+
+The fitted mixture makes no validity claim on its own; `certify_trace()`
+records the branch-and-bound search that bounds the worst-case null
+expectation of `Q/P*` and thereby turns the fit into an e-variable.
+
+```{r certify}
+finished <- ripr_finish(
+  state,
+  reoptimise = TRUE, identify = TRUE, record_gap = TRUE
+)
+x <- likelihood(family(q), label = "Q") /
+  likelihood(finished$P_star, label = "P*")
+nodes <- certify_trace(x, plurality, tol = 1e-9)
+
+certify <- ripr_certify_data(nodes, tol = 1e-9)
+ripr_certify(problem, certify)
+```
+
+Each cell of the null is searched independently — the tabs choose a search,
+the slider an iteration. The partition shades every live cell by its
+certified upper bound, the panel beside it shows the enclosure
+\([\mathrm{incumbent}, \mathrm{bound}]\) closing, and the scatter underneath
+is the search tree, depth against birth iteration.
+
+## Without ripr
+
+The widget constructors never touch `ripr`: they take plain-list payloads
+whose shapes are documented in `ripr_problem_data()`, `ripr_fit_data()`,
+`ripr_lattice_data()` and `ripr_certify_data()`. Saved results — say, the
+payloads above serialised with `saveRDS()` on a machine that has `ripr` —
+render anywhere this package is installed.

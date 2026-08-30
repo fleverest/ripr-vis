@@ -87,7 +87,12 @@ bnb_part <- function(nodes) {
   certificate <- attr(nodes, "certificate")
   list(
     nodes = list(
-      subnull = nodes$subnull,
+      # `certify_trace()` now records one branch-and-bound tree per *cell*
+      # (with `part` saying which declared part a cell came from), and both
+      # nulls here declare parts that are already simplices, so cells and
+      # parts coincide one-to-one and the cell index serves where the old
+      # subnull index did.
+      subnull = nodes$cell,
       id = nodes$id,
       parent = nodes$parent,
       depth = nodes$depth,
@@ -100,14 +105,17 @@ bnb_part <- function(nodes) {
     ),
     # `upper[[s]][t]` is subnull s's certified bound after iteration t and
     # `lower[[s]][t]` the best value attained by then: the enclosure the search
-    # may claim at t. `I()` throughout, or `auto_unbox` collapses a
-    # single-subnull null to a scalar where an array is expected.
+    # may claim at t. Both are now recorded per cell, which under the
+    # coincidence above is per subnull. `I()` throughout, or `auto_unbox`
+    # collapses a single-subnull null to a scalar where an array is expected.
     upper = lapply(attr(nodes, "trace"), I),
     lower = lapply(attr(nodes, "incumbent_trace"), I),
     certificate = list(
       sup_ub = certificate$sup_ub,
       sup_lb = certificate$sup_lb,
-      iterations = I(certificate$iterations),
+      # Per-cell run lengths, to line up with the per-cell traces above;
+      # `certificate$iterations` is reduced per declared part these days.
+      iterations = I(vapply(attr(nodes, "trace"), length, 0L)),
       tol = TOL
     )
   )
@@ -182,7 +190,7 @@ medial <- null_model(
 # One dirac per candidate leading, equally weighted, so Q is a genuine mixture
 # rather than a single multinomial.
 q_med <- cbind(c(0.6, 0.2, 0.2), c(0.2, 0.6, 0.2), c(0.2, 0.2, 0.6))
-W_med <- finite_mixing(components = q_med, weights = rep(1 / 3, 3L))
+W_med <- finite_dist(components = q_med, weights = rep(1 / 3, 3L))
 Q_med <- family(W_med)
 ```
 
@@ -227,7 +235,7 @@ runs <- list(
   ),
   plurality = c(
     list(
-      seeds = lapply(plurality@subnulls, \(s) cols(s@vertices)),
+      seeds = lapply(parts(plurality@region), \(s) cols(s@vertices)),
       marks = list(q = cols(q_plur), weights = I(1)),
       labels = list(
         title = "plurality",
@@ -242,7 +250,7 @@ runs <- list(
   ),
   medial = c(
     list(
-      seeds = lapply(medial@subnulls, \(s) cols(s@vertices)),
+      seeds = lapply(parts(medial@region), \(s) cols(s@vertices)),
       marks = list(q = cols(q_med), weights = I(rep(1 / 3, 3L))),
       labels = list(
         title = "medial",

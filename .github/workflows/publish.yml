@@ -46,12 +46,16 @@ jobs:
           #   rlang   — ripr calls `rlang::check_number_whole()` and friends,
           #             which no released rlang exports. Drop this line once
           #             they are exported upstream or vendored into ripr.
+          #
+          # `local::.` is the riprvis package at the repository root, whose
+          # widgets the deck now renders with; its own dependencies
+          # (htmlwidgets, jsonlite) come along with it.
           packages: |
-            any::jsonlite
+            local::.
             RConsortium/S7@v0.2.2
             r-lib/rlang
             fleverest/ripr
-          cache-version: 3
+          cache-version: 4
 
       # The fits and the certifications are the slow part, and knitr keys its
       # cache on chunk contents, so restoring across commits is safe: touching

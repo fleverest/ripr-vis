@@ -1,5 +1,9 @@
-/* NB: `.controls` is reveal.js's own class for its navigation arrows, and reveal
-   sets `display: none` on it. Never use that class name for slide content. */
+/* Slide theming only. Everything the visualisations themselves need --
+   layout, controls, readouts, tabs -- ships inside the riprvis package's
+   widgets (namespaced riprvis-*), so this file no longer styles them.
+   NB: `.controls` is reveal.js's own class for its navigation arrows, and
+   reveal sets `display: none` on it. Never use that class name for slide
+   content. */
 :root {
   --paper: #fdfcf9;
   --ink:   #1f1d1a;
@@ -13,62 +17,17 @@
 .reveal .slides section { text-align: left; }
 .reveal section > .stage { margin-top: 4px; }
 
-/* Ternary on the left, panels floating on the right. */
-/* Column widths are fixed rather than fractional so the panel heights are
-   predictable: the simplex is 500x440, so 470px of width is 413px of height,
-   which leaves room for the readout, the knobs and the caption inside 748px. */
+/* The statement slides: figure on the left, prose and display equations on
+   the right. The widths are fixed rather than fractional so the equations
+   get the room they need beside a 470px-wide triangle. */
 .stage {
   display: grid;
-  grid-template-columns: 470px 560px;
+  grid-template-columns: 470px 640px;
   gap: 28px;
   align-items: start;
 }
 .stage .left { min-width: 0; }
-.stage .right { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
-
-.readout {
-  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
-  font-variant-numeric: tabular-nums;
-  font-size: 15px;
-  color: var(--ink);
-  border-top: 1px solid var(--rule);
-  margin-top: 8px;
-  padding-top: 8px;
-  min-height: 24px;
-}
-.readout .dim { color: var(--muted); margin-left: 10px; }
-
-.knobs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 28px;
-  align-items: center;
-  border-top: 1px solid var(--rule);
-  padding-top: 6px;
-  margin-top: 10px;
-}
-/* Quarto wraps every ojs cell in several divs, so the controls would otherwise
-   stack instead of forming a row. `display: contents` lifts each label out to
-   be a direct flex child. */
-.knobs .cell,
-.knobs .cell-output,
-.knobs .cell-output > div,
-.knobs .observablehq { display: contents; }
-
-.ctl { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-.ctl .val { min-width: 2.2em; color: var(--ink); }
-
-.knobs input, .knobs label, .knobs .ctl, .knobs .val {
-  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-}
-.knobs input[type=range],
-.knobs input[type=checkbox] { accent-color: var(--clay); }
-/* Observable sizes its range input for a notebook column; give it the room a
-   projected slide has. */
-.knobs input[type=range] { width: 260px; }
+.stage .right { min-width: 0; }
 
 .caption {
   font-size: 16px;
@@ -78,8 +37,8 @@
 }
 .caption b { color: var(--ink); font-weight: 400; }
 
-/* Quarto wraps each ojs cell in a bordered figure by default; the panels are
-   the figure here. */
+/* Quarto wraps each chunk's output in a bordered figure by default; the
+   widgets are the figure here. */
 .reveal .cell, .reveal .cell-output-display { margin: 0; }
 .reveal .cell-output-display > figure { margin: 0; }
 
@@ -87,12 +46,8 @@
    figure; it costs 90px of the 748 available. */
 .reveal h2 { font-size: 32px; font-weight: 400; margin: 0 0 10px; }
 
-/* The statement slides have no tall figure on the right, so they can take the
-   extra width; the diagnostic slides cannot, or the caption clips. */
-.stage.wide { grid-template-columns: 470px 640px; }
-
-/* The statement column: prose plus display equations, sized so four of them fit
-   beside a 456-tall triangle. MathML inherits the serif body face. */
+/* The statement column: prose plus display equations, sized so four of them
+   fit beside a 456-tall triangle. MathML inherits the serif body face. */
 .statement { font-size: 17px; line-height: 1.45; }
 .statement p { margin: 0 0 9px; }
 .statement math { font-size: 0.98em; }
@@ -102,20 +57,3 @@
 
 /* MathML in captions should sit on the text baseline, not stretch the line. */
 .caption math { font-size: 0.95em; }
-
-/* Subnull tabs. Each facet is searched independently, so the tab is choosing a
-   search, not a view of one. */
-.tabs { display: flex; gap: 0; }
-.tabs .tab {
-  font: inherit; font-size: 13px; font-family: inherit;
-  background: none; color: var(--muted);
-  border: 1px solid var(--rule); border-right-width: 0;
-  padding: 4px 12px; cursor: pointer; border-radius: 0;
-  min-width: 0;
-}
-.tabs .tab:last-child { border-right-width: 1px; }
-.tabs .tab.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-.tabs .tab:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
-/* A single subnull is a label, not a choice. */
-.tabs.single .tab { cursor: default; background: none; color: var(--muted);
-  border-color: var(--rule); }

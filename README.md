@@ -18,10 +18,21 @@ Quarto documents, and Shiny:
 - `ripr_certify()` — the branch-and-bound search: the evolving cell
   partition, the closing enclosure window, and the search tree.
 
+Planar analogues cover two-dimensional families such as
+`ripr::gaussian_family()` with polyhedral nulls, including unbounded parts
+given by vertices plus recession rays:
+
+- `ripr_problem2d()` — the null's polyhedra and the alternative on the
+  parameter plane, with the viewport sized to the parts' vertices (plus a
+  margin) so rays simply run off the edge.
+- `ripr_fit2d()` — the same animated field view as `ripr_fit()`, with the
+  field evaluated in R on the plotting grid using the fit's own quadrature.
+
 Each widget takes a plain-list payload, built either by hand or from real
 `ripr` objects with `ripr_problem_data()`, `ripr_lattice_data()`,
-`ripr_fit_data()` and `ripr_certify_data()`; only the data helpers touch
-`ripr`, so saved payloads render without it.
+`ripr_fit_data()`, `ripr_certify_data()`, `ripr_problem2d_data()` and
+`ripr_fit2d_data()`; only the data helpers touch `ripr`, so saved payloads
+render without it.
 
 ```r
 # install.packages("remotes")

@@ -66,3 +66,41 @@ ripr_widget <- function(name, payload, default_height, width, height,
 stop_unless <- function(ok, ...) {
   if (!isTRUE(ok)) stop(..., call. = FALSE)
 }
+
+# A snapshot records the iteration counters it was taken at; the trace row
+# with the same counters holds the diagnostics for the mixture that snapshot
+# describes. `gap` and `gap_theta` describe the mixture the row *produced*,
+# for every verb, so both line up with the snapshot on the same row.
+snapshot_rows <- function(trace, snapshots) {
+  key <- function(v) paste(v[c("fw", "lb", "em", "weight")], collapse = "/")
+  row <- match(
+    vapply(snapshots, function(s) key(s$iters), ""),
+    apply(trace[, c("fw", "lb", "em", "weight")], 1L, key)
+  )
+  stop_unless(
+    !anyNA(row),
+    "a snapshot has no matching trace row; was the trace subset or reordered?"
+  )
+  row
+}
+
+# The per-snapshot diagnostics every fit payload carries, whatever the family.
+fit_diagnostics <- function(trace, snapshots, row) {
+  list(
+    support = lapply(snapshots, function(s) {
+      list(
+        atoms = cols(do.call(cbind, s$atoms)),
+        weights = I(unlist(s$weights))
+      )
+    }),
+    kl = I(trace$kl[row]),
+    gap = I(trace$gap[row]),
+    # list column, and NA on any row that did not sweep. Scalar NA rather than
+    # NULL: with na = "null" it serialises to a JSON null the JS side can
+    # test, where a NULL list entry would serialise as a truthy empty object.
+    gap_theta = lapply(trace$gap_theta[row], function(v) {
+      if (all(is.na(v))) NA else as.vector(v)
+    }),
+    phase = I(trace$phase[row])
+  )
+}

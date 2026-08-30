@@ -111,6 +111,70 @@ certified upper bound, the panel beside it shows the enclosure
 \([\mathrm{incumbent}, \mathrm{bound}]\) closing, and the scatter underneath
 is the search tree, depth against birth iteration.
 
+## A Gaussian family with polyhedral nulls
+
+The planar widgets do the same job for two-dimensional families whose
+parameter is a point of the plane. Here the family is a bivariate Gaussian
+with identity covariance, the alternative sits at the origin, and the null is
+four pointy polyhedra -- each with four vertices and a single recession ray
+pointing along an axis away from the origin, apex at distance one. The
+viewport sizes itself to the parts' vertices (plus a margin), so the rays
+simply run off the edge and the geometry near the alternative fills the view.
+
+```{r gaussian}
+gauss <- gaussian_family(dim = 2L)
+dart <- function(axis, sgn) {
+  e <- c(0, 0)
+  e[axis] <- sgn
+  perp <- c(0, 0)
+  perp[3L - axis] <- 1
+  polyhedron_region(
+    vertices = cbind(e, 1.75 * e + 0.6 * perp, 1.75 * e - 0.6 * perp,
+                     2.5 * e),
+    rays = cbind(e)
+  )
+}
+darts <- null_model(
+  gauss,
+  list(dart(1, 1), dart(1, -1), dart(2, 1), dart(2, -1))
+)
+
+problem2d <- ripr_problem2d_data(
+  darts,
+  q = c(0, 0),
+  title = "four darts",
+  part_labels = c("+x", "-x", "+y", "-y")
+)
+ripr_problem2d(problem2d)
+```
+
+The sample space is continuous, so the fit runs on a quadrature engine, and
+the field ships as one grid of values per step -- evaluated in R with the
+same importance-weighted quadrature the fit itself used, so the gap markers
+agree with the drawn field by construction. Starting the fit from each
+part's far tail vertex (rather than the default projection of the
+alternative) leaves the optimiser visible work to do.
+
+```{r gaussian-fit}
+set.seed(2L)
+state2d <- ripr_init(
+  gauss(c(0, 0)), darts,
+  engine = gh_engine(24L),
+  atoms = list(
+    cbind(c(2.5, 0)), cbind(c(-2.5, 0)), cbind(c(0, 2.5)), cbind(c(0, -2.5))
+  ),
+  control = ripr_control(snapshot = "all")
+)
+for (i in seq_len(10L)) {
+  state2d <- state2d |>
+    fw_step(record_gap = TRUE) |>
+    em_step(record_gap = TRUE)
+}
+
+fit2d <- ripr_fit2d_data(state2d, problem2d)
+ripr_fit2d(problem2d, fit2d)
+```
+
 ## Without ripr
 
 The widget constructors never touch `ripr`: they take plain-list payloads

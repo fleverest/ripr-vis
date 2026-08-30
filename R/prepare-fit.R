@@ -48,45 +48,21 @@ ripr_fit_data <- function(state, lattice, q = NULL, weights = NULL,
     "`q_pmf` must have one entry per lattice outcome"
   )
 
-  # A snapshot records the iteration counters it was taken at; the trace row
-  # with the same counters holds the diagnostics for the mixture that snapshot
-  # describes. `gap` and `gap_theta` describe the mixture the row *produced*,
-  # for every verb, so both line up with the snapshot on the same row.
-  key <- function(v) paste(v[c("fw", "lb", "em", "weight")], collapse = "/")
-  row <- match(
-    vapply(snapshots, function(s) key(s$iters), ""),
-    apply(trace[, c("fw", "lb", "em", "weight")], 1L, key)
-  )
-  stop_unless(
-    !anyNA(row),
-    "a snapshot has no matching trace row; was the trace subset or reordered?"
-  )
+  row <- snapshot_rows(trace, snapshots)
 
-  list(
-    ratio = lapply(snapshots, function(s) {
-      I(signif(
-        q_pmf / lattice_mixture_pmf(
-          lattice,
-          do.call(cbind, s$atoms),
-          unlist(s$weights)
-        ),
-        7
-      ))
-    }),
-    support = lapply(snapshots, function(s) {
-      list(
-        atoms = cols(do.call(cbind, s$atoms)),
-        weights = I(unlist(s$weights))
-      )
-    }),
-    kl = I(trace$kl[row]),
-    gap = I(trace$gap[row]),
-    # list column, and NA on any row that did not sweep. Scalar NA rather than
-    # NULL: with na = "null" it serialises to a JSON null the JS side can
-    # test, where a NULL list entry would serialise as a truthy empty object.
-    gap_theta = lapply(trace$gap_theta[row], function(v) {
-      if (all(is.na(v))) NA else as.vector(v)
-    }),
-    phase = I(trace$phase[row])
+  c(
+    list(
+      ratio = lapply(snapshots, function(s) {
+        I(signif(
+          q_pmf / lattice_mixture_pmf(
+            lattice,
+            do.call(cbind, s$atoms),
+            unlist(s$weights)
+          ),
+          7
+        ))
+      })
+    ),
+    fit_diagnostics(trace, snapshots, row)
   )
 }

@@ -1,0 +1,184 @@
+---
+title: "Visualising a RIPr fit and its certification"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Visualising a RIPr fit and its certification}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+has_ripr <- requireNamespace("ripr", quietly = TRUE)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = has_ripr
+)
+```
+
+riprvis draws the three stages of building a certified e-variable with
+[ripr](https://github.com/fleverest/ripr): the problem (a composite null and
+a fixed alternative), the fit (the reverse information projection of the
+alternative onto the null), and the certification (a branch-and-bound upper
+bound on the worst-case null expectation). Each stage is one htmlwidget, so
+the visualisations work in the RStudio viewer, R Markdown and Quarto
+documents, and Shiny.
+
+This vignette needs `ripr` installed
+(`remotes::install_github("fleverest/ripr")`); without it the code below is
+shown but not run.
+
+## The problem
+
+The running example is the *plurality* null for a three-category multinomial
+with 20 trials: candidate 1 does not win outright, a union of two overlapping
+simplices. The alternative `Q` puts candidate 1 narrowly ahead.
+
+```{r problem}
+library(ripr)
+library(riprvis)
+
+family <- multinomial_family(n_trials = 20L, k = 3L)
+plurality <- null_model(
+  family,
+  lapply(2:3, function(j) {
+    vertices <- diag(3)
+    vertices[, 1L] <- replace(numeric(3), c(1L, j), 0.5)
+    simplex_region(vertices = vertices)
+  })
+)
+q <- c(0.40, 0.34, 0.26)
+
+problem <- ripr_problem_data(
+  plurality,
+  q = q,
+  title = "plurality",
+  part_labels = c("θ₁ ≤ θ₂", "θ₁ ≤ θ₃")
+)
+ripr_problem(problem)
+```
+
+## Fitting the projection
+
+Alternating Frank–Wolfe and EM steps, with snapshots of every iterate and the
+duality gap swept at every step so the widget can show where the gap is
+attained.
+
+```{r fit}
+set.seed(1L)
+state <- ripr_init(
+  family(q), plurality,
+  control = ripr_control(snapshot = "all")
+)
+for (i in seq_len(15L)) {
+  state <- state |>
+    fw_step(record_gap = TRUE) |>
+    em_step(record_gap = TRUE)
+}
+
+lattice <- ripr_lattice_data(family)
+fit <- ripr_fit_data(state, lattice, q = q)
+ripr_fit(problem, fit, lattice)
+```
+
+Drag the step slider (or press play) to watch the field
+\(G_i(\theta) = E_\theta[Q/P_i]\) drain below one as atoms are added and
+reweighted, while the right-hand panels trace the KL divergence, the gap, and
+the guaranteed log-growth rate.
+
+## Certifying the fit
+
+The fitted mixture makes no validity claim on its own; `certify_trace()`
+records the branch-and-bound search that bounds the worst-case null
+expectation of `Q/P*` and thereby turns the fit into an e-variable.
+
+```{r certify}
+finished <- ripr_finish(
+  state,
+  reoptimise = TRUE, identify = TRUE, record_gap = TRUE
+)
+x <- likelihood(family(q), label = "Q") /
+  likelihood(finished$P_star, label = "P*")
+nodes <- certify_trace(x, plurality, tol = 1e-9)
+
+certify <- ripr_certify_data(nodes, tol = 1e-9)
+ripr_certify(problem, certify)
+```
+
+Each cell of the null is searched independently — the tabs choose a search,
+the slider an iteration. The partition shades every live cell by its
+certified upper bound, the panel beside it shows the enclosure
+\([\mathrm{incumbent}, \mathrm{bound}]\) closing, and the scatter underneath
+is the search tree, depth against birth iteration.
+
+## A Gaussian family with polyhedral nulls
+
+The planar widgets do the same job for two-dimensional families whose
+parameter is a point of the plane. Here the family is a bivariate Gaussian
+with identity covariance, the alternative sits at the origin, and the null is
+four pointy polyhedra -- each with four vertices and a single recession ray
+pointing along an axis away from the origin, apex at distance one. The
+viewport sizes itself to the parts' vertices (plus a margin), so the rays
+simply run off the edge and the geometry near the alternative fills the view.
+
+```{r gaussian}
+gauss <- gaussian_family(dim = 2L)
+dart <- function(axis, sgn) {
+  e <- c(0, 0)
+  e[axis] <- sgn
+  perp <- c(0, 0)
+  perp[3L - axis] <- 1
+  polyhedron_region(
+    vertices = cbind(e, 1.75 * e + 0.6 * perp, 1.75 * e - 0.6 * perp,
+                     2.5 * e),
+    rays = cbind(e)
+  )
+}
+darts <- null_model(
+  gauss,
+  list(dart(1, 1), dart(1, -1), dart(2, 1), dart(2, -1))
+)
+
+problem2d <- ripr_problem2d_data(
+  darts,
+  q = c(0, 0),
+  title = "four darts",
+  part_labels = c("+x", "-x", "+y", "-y")
+)
+ripr_problem2d(problem2d)
+```
+
+The sample space is continuous, so the fit runs on a quadrature engine, and
+the field ships as one grid of values per step -- evaluated in R with the
+same importance-weighted quadrature the fit itself used, so the gap markers
+agree with the drawn field by construction. Starting the fit from each
+part's far tail vertex (rather than the default projection of the
+alternative) leaves the optimiser visible work to do.
+
+```{r gaussian-fit}
+set.seed(2L)
+state2d <- ripr_init(
+  gauss(c(0, 0)), darts,
+  engine = gh_engine(24L),
+  atoms = list(
+    cbind(c(2.5, 0)), cbind(c(-2.5, 0)), cbind(c(0, 2.5)), cbind(c(0, -2.5))
+  ),
+  control = ripr_control(snapshot = "all")
+)
+for (i in seq_len(10L)) {
+  state2d <- state2d |>
+    fw_step(record_gap = TRUE) |>
+    em_step(record_gap = TRUE)
+}
+
+fit2d <- ripr_fit2d_data(state2d, problem2d)
+ripr_fit2d(problem2d, fit2d)
+```
+
+## Without ripr
+
+The widget constructors never touch `ripr`: they take plain-list payloads
+whose shapes are documented in `ripr_problem_data()`, `ripr_fit_data()`,
+`ripr_lattice_data()` and `ripr_certify_data()`. Saved results — say, the
+payloads above serialised with `saveRDS()` on a machine that has `ripr` —
+render anywhere this package is installed.

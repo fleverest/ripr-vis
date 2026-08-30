@@ -1,0 +1,53 @@
+name: R-CMD-check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  R-CMD-check:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          # ripr is only a Suggests, but the integration tests and the
+          # vignette want it; its dependencies need the same pinning as the
+          # slide deck's publish workflow:
+          #
+          #   S7      — 0.2.1 does not build on R >= 4.6: its init.c reads
+          #             `R_NamespaceRegistry`, which R no longer declares.
+          #             0.2.2 dropped it and works with current ripr. The dev
+          #             branch is not safe either: ripr 0.0.0.9000 fails to
+          #             load against S7 main (new_object parent checks), so
+          #             the tag is an exact pin here.
+          #   rlang   — ripr calls `rlang::check_number_whole()` and friends,
+          #             which no released rlang exports. Drop this line once
+          #             they are exported upstream or vendored into ripr.
+          extra-packages: |
+            any::rcmdcheck
+            RConsortium/S7@v0.2.2
+            r-lib/rlang
+            fleverest/ripr
+          needs: check
+          cache-version: 1
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true

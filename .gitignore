@@ -30,6 +30,14 @@ renv/staging/
 renv/python/
 renv/sandbox/
 
+# --- R package build artifacts ------------------------------------------------
+/riprvis_*.tar.gz
+/riprvis.Rcheck/
+/vignettes/*.html
+/vignettes/*_files/
+/doc/
+/Meta/
+
 # --- misc ---------------------------------------------------------------------
 node_modules/
 .DS_Store

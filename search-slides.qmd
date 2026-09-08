@@ -51,12 +51,14 @@ Q_plur <- family(as.vector(q_plur))
 #| include: false
 #| cache: true
 #| dependson: ["setup", "plurality-null"]
-# `record_gap = TRUE` on both verbs: the sweep is not free, but it is what puts
-# a gap and a maximiser on every step rather than every second one.
+# `record_gap = TRUE` at init and on both verbs: the sweep is not free, but
+# it is what puts a gap and a maximiser on every frame, the starting mixture
+# included, rather than every second one.
 set.seed(1L)
 state_plur <- ripr_init(
   Q_plur,
   plurality,
+  record_gap = TRUE,
   control = ripr_control(snapshot = "all")
 )
 for (i in seq_len(30L)) {
@@ -79,6 +81,69 @@ fit_plur <- ripr_finish(
 X_plur <- likelihood(Q_plur, label = "Q") /
   likelihood(fit_plur$P_star, label = "P*")
 nodes_plur <- certify_trace(X_plur, plurality, tol = TOL)
+```
+
+```{r plurality-compare}
+#| include: false
+#| cache: true
+#| dependson: ["setup", "plurality-null"]
+# The two oracle rules head to head, with no EM sweeps in between so each
+# trace is the step rule alone: Frank--Wolfe adds the maximiser of G,
+# Li--Barron the candidate whose *reweighted* mixture has the lowest KL, so
+# each of its steps is worth more and costs several times as much. The trace
+# times every row, so the runs read against the clock as well as the step
+# count.
+set.seed(1L)
+state_fw <- ripr_init(Q_plur, plurality, record_gap = TRUE) |>
+  fw_step(times = 30L, record_gap = TRUE)
+set.seed(1L)
+state_lb <- ripr_init(Q_plur, plurality, record_gap = TRUE) |>
+  lb_step(times = 30L, record_gap = TRUE)
+```
+
+```{r plurality-variants}
+#| include: false
+#| cache: true
+#| dependson: ["setup", "plurality-null"]
+# Every Frank--Wolfe variant on the same problem and seed: four direction
+# sets (whichever of the allowed directions reaches the lowest KL is taken)
+# crossed with three step-size rules. "Fully corrective" is a line search
+# followed by weight steps to convergence over the current support, with the
+# gap swept once at the end of the correction rather than on every cheap
+# weight row.
+fw_directions <- list(
+  "forward" = "forward",
+  "forward + pairwise" = c("forward", "pairwise"),
+  "forward + away" = c("forward", "away"),
+  "forward + pairwise + away" = c("forward", "pairwise", "away")
+)
+fw_sizes <- c("fixed", "line-search", "fully-corrective")
+fw_variant <- function(directions, size) {
+  set.seed(1L)
+  state <- ripr_init(Q_plur, plurality, record_gap = TRUE)
+  for (i in seq_len(30L)) {
+    state <- if (size == "fully-corrective") {
+      state |>
+        fw_step(directions = directions, size = "line-search") |>
+        weight_step(times = 200L, until = support_gap_below(1e-8)) |>
+        weight_step(record_gap = TRUE)
+    } else {
+      fw_step(state, directions = directions, size = size, record_gap = TRUE)
+    }
+  }
+  state
+}
+fw_grid <- expand.grid(
+  size = fw_sizes,
+  directions = names(fw_directions),
+  stringsAsFactors = FALSE
+)
+fw_variants <- Map(
+  function(d, s) fw_variant(fw_directions[[d]], s),
+  fw_grid$directions,
+  fw_grid$size
+)
+names(fw_variants) <- paste(fw_grid$directions, fw_grid$size, sep = " · ")
 ```
 
 ```{r medial-null}
@@ -105,7 +170,12 @@ Q_med <- family(W_med)
 #| dependson: ["setup", "medial-null"]
 # Alternating steps: Frank--Wolfe adds an atom, EM reweights what is there.
 set.seed(2L)
-state_med <- ripr_init(Q_med, medial, control = ripr_control(snapshot = "all"))
+state_med <- ripr_init(
+  Q_med,
+  medial,
+  record_gap = TRUE,
+  control = ripr_control(snapshot = "all")
+)
 for (i in seq_len(30L)) {
   state_med <- state_med |>
     fw_step(record_gap = TRUE) |>
@@ -168,6 +238,7 @@ state_cup <- ripr_init(
   Q_cup,
   cup,
   engine = mc_engine(1500L),
+  record_gap = TRUE,
   control = ripr_control(snapshot = "all")
 )
 for (i in seq_len(20L)) {
@@ -198,6 +269,15 @@ plur_problem <- ripr_problem_simplex_data(
 )
 plur_fit <- ripr_fit_simplex_data(state_plur, lattice, q = q_plur)
 plur_cert <- ripr_certify_simplex_data(nodes_plur, tol = TOL)
+plur_compare <- ripr_compare_data(list(
+  "Frank–Wolfe" = state_fw,
+  "Li–Barron" = state_lb
+))
+plur_variants <- ripr_compare_data(
+  fw_variants,
+  colour_by = fw_grid$directions,
+  dash_by = fw_grid$size
+)
 
 med_problem <- ripr_problem_simplex_data(
   medial,
@@ -282,6 +362,33 @@ ripr_certify_simplex(plur_problem, plur_cert, height = 545)
 Repeated bisection, one facet at a time — the two are searched independently.
 The panel is that facet's enclosure $[\text{incumbent},\ \text{bound}]$
 closing; the certified bound is the larger of the two facets'.
+:::
+
+## Comparing the fitting algorithms {.slide}
+
+```{r}
+ripr_compare(plur_compare, height = 580)
+```
+
+::: {.caption}
+The same problem and seed, thirty oracle steps each and no EM in between:
+Frank–Wolfe adds the maximiser of $g_i$, Li–Barron the atom whose
+*reweighted* mixture has the lowest KL. Per step the greedier rule is ahead;
+switch the axis to the clock, where each of its steps costs several
+Frank–Wolfe steps, and see whether it stays there.
+:::
+
+## Comparing Frank–Wolfe variants {.slide}
+
+```{r}
+ripr_compare(plur_variants, height = 580)
+```
+
+::: {.caption}
+Twelve runs of the same problem and seed, thirty oracle steps each. Colour
+is the set of directions the step may take, line style the step size: the
+open-loop schedule, a line search, or a line search followed by weight
+steps to convergence over the current support. Hover a line to read it off.
 :::
 
 ## The medial-triangle problem {.slide}

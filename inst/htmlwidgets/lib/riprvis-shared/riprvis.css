@@ -119,3 +119,29 @@
   color: var(--riprvis-muted);
   border-color: var(--riprvis-rule);
 }
+
+/* The comparison widget: a legend row above full-width panels, and a readout
+ * with one line per run under them. */
+.riprvis-wide { max-width: 980px; }
+.riprvis-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  align-items: center;
+  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    monospace;
+  font-size: 13px;
+  color: var(--riprvis-ink);
+  margin-bottom: 6px;
+}
+.riprvis-legend .riprvis-swatch,
+.riprvis-readout .riprvis-swatch {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 0;
+  margin-right: 8px;
+}
+.riprvis-legend .riprvis-group + .riprvis-group { margin-left: 14px; }
+.riprvis-readout .riprvis-hint { color: var(--riprvis-muted); }
+.riprvis-readout .riprvis-line { display: block; white-space: nowrap; }
+.riprvis-readout .riprvis-line + .riprvis-line { margin-top: 2px; }

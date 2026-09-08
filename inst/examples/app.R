@@ -1,7 +1,7 @@
-# A minimal Shiny app exercising all three simplex widgets and, in particular,
-# the re-render path: switching the number of fit iterations re-renders
-# ripr_fit_simplex, which must tear down its play loop rather than leave it
-# accelerating.
+# A minimal Shiny app exercising the three simplex widgets and the comparison
+# widget and, in particular, the re-render path: switching the number of fit
+# iterations re-renders ripr_fit_simplex, which must tear down its play loop
+# rather than leave it accelerating.
 # Run with: shiny::runApp(system.file("examples", package = "riprvis"))
 
 library(shiny)
@@ -26,15 +26,18 @@ problem <- ripr_problem_simplex_data(
   part_labels = c("θ₁ ≤ θ₂", "θ₁ ≤ θ₃")
 )
 
-fit_state <- function(iters) {
+# A Li--Barron step costs several Frank--Wolfe steps, which is the point of
+# the comparison and also why the slider tops out where it does.
+fit_state <- function(iters, add = fw_step) {
   set.seed(1L)
   state <- ripr_init(
     family(q), plurality,
+    record_gap = TRUE,
     control = ripr_control(snapshot = "all")
   )
   for (i in seq_len(iters)) {
     state <- state |>
-      fw_step(record_gap = TRUE) |>
+      add(record_gap = TRUE) |>
       em_step(record_gap = TRUE)
   }
   state
@@ -44,6 +47,7 @@ ui <- fluidPage(
   titlePanel("riprvis"),
   sliderInput("iters", "fit iterations", min = 2L, max = 15L, value = 8L),
   riprFitSimplexOutput("fit", height = "540px"),
+  riprCompareOutput("compare", height = "520px"),
   riprCertifySimplexOutput("certify", height = "580px"),
   riprProblemSimplexOutput("problem", height = "440px")
 )
@@ -56,6 +60,13 @@ server <- function(input, output, session) {
   output$fit <- renderRiprFitSimplex({
     fit <- ripr_fit_simplex_data(state(), lattice, q = q)
     ripr_fit_simplex(problem, fit, lattice)
+  })
+
+  output$compare <- renderRiprCompare({
+    ripr_compare(ripr_compare_data(list(
+      "Frank–Wolfe + EM" = state(),
+      "Li–Barron + EM" = fit_state(input$iters, add = lb_step)
+    )))
   })
 
   output$certify <- renderRiprCertifySimplex({

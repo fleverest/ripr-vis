@@ -32,7 +32,8 @@ tiny_state <- function() {
       phase = c("fw", "em"),
       kl = c(0.5, 0.4),
       gap = c(0.2, NA),
-      gap_theta = I(list(c(0.2, 0.5, 0.3), NA))
+      gap_theta = I(list(c(0.2, 0.5, 0.3), NA)),
+      elapsed = c(0.25, 0.5)
     ),
     snapshots = list(
       list(
@@ -101,3 +102,4 @@ tiny_problem <- function() {
 payload_of <- function(widget) {
   jsonlite::fromJSON(widget$x$data, simplifyVector = FALSE)
 }
+

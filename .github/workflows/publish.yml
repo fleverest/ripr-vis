@@ -55,7 +55,7 @@ jobs:
             RConsortium/S7@v0.2.2
             r-lib/rlang
             fleverest/ripr
-          cache-version: 4
+          cache-version: 5
 
       # The fits and the certifications are the slow part, and knitr keys its
       # cache on chunk contents, so restoring across commits is safe: touching

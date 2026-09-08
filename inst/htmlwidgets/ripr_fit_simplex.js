@@ -1,5 +1,5 @@
 /* Fitting the projection: the Bernstein field G_i = E_theta[Q/P_i] over the
- * course of a Frank-Wolfe/EM fit, alongside its KL/gap/log-growth trace.
+ * course of a Frank-Wolfe/EM fit, alongside its KL/gap/growth trace.
  * Ported from drawField()/fieldReadout()/drawFitPanels() in
  * search-slides.qmd. The Bernstein basis (RiprVis.buildGrid) is expensive, so
  * it is built once per renderValue and reused for every step's contour. */

@@ -5,7 +5,7 @@
 #' simplex -- red where it exceeds one, with the \eqn{G = 1} level set drawn
 #' solid -- together with the support of the current iterate and the point
 #' where the duality gap is attained. The right panels trace KL divergence,
-#' gap, and the guaranteed log-growth rate \eqn{KL - \log(1 + gap)} across the
+#' gap, and the guaranteed growth rate \eqn{KL - \log(1 + gap)} across the
 #' fit, with the current step picked out. A step slider and play toggle drive
 #' the animation.
 #'

@@ -249,7 +249,7 @@ window.RiprVis = (function () {
   // --- fit diagnostics ------------------------------------------------------
   // Family-agnostic: KL is what the fit minimises; the gap certifies how far
   // it still is from the minimum; the difference KL - log(1 + gap) is the
-  // log-growth rate the resulting e-variable is guaranteed. Together they
+  // growth rate the resulting e-variable is guaranteed. Together they
   // show the third rising as the second falls, which is the whole reason for
   // running the fit to convergence rather than stopping when KL flattens.
   function fitPanels(fit, nFit, i) {
@@ -271,7 +271,7 @@ window.RiprVis = (function () {
           .filter(function (d) { return d.y != null && d.y > 0; })
       },
       {
-        label: "log-growth  KL − log(1 + gap)", log: false, colour: INK,
+        label: "growth  KL − log(1 + gap)", log: false, colour: INK,
         v: fit.kl.map(function (k, j) {
           return {
             t: j + 1,

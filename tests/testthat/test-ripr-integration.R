@@ -62,3 +62,45 @@ test_that("payloads build from real ripr objects", {
   w_fit <- ripr_fit_simplex(problem, fit, lattice)
   expect_s3_class(w_fit, "htmlwidget")
 })
+
+test_that("ripr runs compare against each other on the trace's own clock", {
+  skip_if_not_installed("ripr")
+
+  family <- ripr::multinomial_family(n_trials = 4L, k = 3L)
+  null <- ripr::null_model(
+    family,
+    list(ripr::simplex_region(
+      vertices = cbind(c(0.5, 0.5, 0), c(0, 1, 0), c(0, 0, 1))
+    ))
+  )
+  q <- c(0.40, 0.34, 0.26)
+  set.seed(1L)
+  fw <- ripr::ripr_init(
+    family(q), null,
+    record_gap = TRUE, control = ripr::ripr_control(snapshot = "all")
+  )
+  for (i in 1:2) {
+    fw <- fw |>
+      ripr::fw_step(record_gap = TRUE) |>
+      ripr::em_step()
+  }
+  set.seed(1L)
+  lb <- ripr::ripr_init(family(q), null) |>
+    ripr::lb_step(times = 2L, record_gap = TRUE)
+
+  expect_true("elapsed" %in% names(fw@trace))
+  expect_true(all(is.finite(fw@trace$elapsed)))
+
+  cmp <- ripr_compare_data(list("Frank–Wolfe" = fw, "Li–Barron" = lb))
+  expect_true(cmp$has_time)
+  expect_equal(as.integer(cmp$runs[[1]]$step)[1], 0L)
+  expect_equal(as.numeric(cmp$runs[[2]]$time), cumsum(lb@trace$elapsed))
+  expect_true(all(diff(as.numeric(cmp$runs[[2]]$time)) >= 0))
+  expect_s3_class(ripr_compare(cmp), "htmlwidget")
+
+  # the starting mixture is a frame of the fit, with its gap swept at init
+  fit <- ripr_fit_simplex_data(fw, ripr_lattice_data(family), q = q)
+  expect_equal(as.character(fit$phase)[1], "init")
+  expect_length(fit$ratio, nrow(fw@trace))
+  expect_true(is.finite(fit$gap[1]))
+})

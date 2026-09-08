@@ -25,7 +25,7 @@ parameter plane -- red where it exceeds one, with the \eqn{G = 1} level
 set drawn solid -- the null's polyhedral parts dashed over it (receding
 past the viewport along their rays), the support of the current iterate,
 and the point where the duality gap is attained. The right panels trace
-KL, gap and guaranteed log-growth across the fit. A step slider and play
+KL, gap and guaranteed growth across the fit. A step slider and play
 toggle drive the animation. The viewport frames the null's vertices with
 a margin, per \code{\link[=ripr_problem2d_data]{ripr_problem2d_data()}}.
 }

@@ -128,6 +128,61 @@ X_med <- likelihood(Q_med, label = "Q") /
 nodes_med <- certify_trace(X_med, medial, tol = TOL)
 ```
 
+```{r cup-null}
+#| include: false
+# A Gaussian family: X ~ N(theta, I) with theta a point of the plane. The null
+# is one unbounded polyhedron, a cup: four vertices along its floor and two
+# recession rays running up its sides, so it is drawn in V-representation and
+# recedes past the frame rather than ending at an edge.
+gauss <- gaussian_family(dim = 2L)
+cup <- null_model(
+  gauss,
+  list(polyhedron_region(
+    vertices = cbind(c(-1, 0), c(-0.4, -0.6), c(0.4, -0.6), c(1, 0)),
+    rays = cbind(c(-0.3, 1), c(0.3, 1))
+  ))
+)
+
+# Five equally weighted atoms ringing the cup, all outside it: one under the
+# floor, one off each rim, and one flanking each ray further up.
+q_cup <- cbind(
+  c(0, -1.6),
+  c(-1.9, 0.3),
+  c(1.9, 0.3),
+  c(-2.3, 2.2),
+  c(2.3, 2.2)
+)
+W_cup <- finite_dist(components = q_cup, weights = rep(1 / 5, 5L))
+Q_cup <- gauss(W_cup)
+```
+
+```{r cup-fit}
+#| include: false
+#| cache: true
+#| dependson: ["cup-null"]
+# The sample space is continuous and the alternative is a mixture, so
+# Gauss--Hermite is out and the expectation is Monte Carlo: draws from Q are
+# frozen at init and every step, gap sweep and drawn field reuses them.
+set.seed(3L)
+state_cup <- ripr_init(
+  Q_cup,
+  cup,
+  engine = mc_engine(1500L),
+  control = ripr_control(snapshot = "all")
+)
+for (i in seq_len(20L)) {
+  state_cup <- state_cup |>
+    fw_step(record_gap = TRUE) |>
+    em_step(record_gap = TRUE)
+}
+fit_cup <- ripr_finish(
+  state_cup,
+  reoptimise = TRUE,
+  identify = TRUE,
+  record_gap = TRUE
+)
+```
+
 ```{r payloads}
 #| include: false
 # Everything the widgets draw. The fits and certifications above are cached;
@@ -151,8 +206,24 @@ med_problem <- ripr_problem_data(
   title = "medial",
   part_labels = "θⱼ ≤ ½ for every j"
 )
-med_fit <- ripr_fit_data(state_med, lattice, q = q_med, weights = rep(1 / 3, 3L))
+med_fit <- ripr_fit_data(
+  state_med,
+  lattice,
+  q = q_med,
+  weights = rep(1 / 3, 3L)
+)
 med_cert <- ripr_certify_data(nodes_med, tol = TOL)
+
+# The planar payloads: the cup's generators frame the view, and the field is
+# evaluated in R on that frame's grid with the fit's own frozen draws.
+cup_problem <- ripr_problem2d_data(
+  cup,
+  q = q_cup,
+  weights = rep(1 / 5, 5L),
+  title = "cup",
+  part_labels = "conv(V) + cone(R)"
+)
+cup_fit <- ripr_fit2d_data(state_cup, cup_problem)
 ```
 
 ## The plurality problem {.slide}
@@ -196,7 +267,7 @@ ripr_fit(plur_problem, plur_fit, lattice, height = 545)
 ```
 
 ::: {.caption}
-$G_i(\theta) = E_\theta[Q/P_i]$, red where it exceeds one. Frank–Wolfe adds the
+$g_i(\theta) = E_\theta[Q/P_i]$, red where it exceeds one. Frank–Wolfe adds the
 maximiser over the null as an atom; the gap is $\max_{H_0} G_i - 1$, so the fit
 is done when no red is left inside the dashed region.
 :::
@@ -255,7 +326,7 @@ ripr_fit(med_problem, med_fit, lattice, height = 545)
 ```
 
 ::: {.caption}
-Steps alternate: Frank–Wolfe adds the maximiser of $G_i$ over the null, then EM
+Steps alternate: Frank–Wolfe adds the maximiser of $g_i$ over the null, then EM
 reweights the atoms already there.
 :::
 
@@ -267,4 +338,57 @@ ripr_certify(med_problem, med_cert, height = 545)
 
 ::: {.caption}
 One cell, interior to the simplex, so the bisection has no vertex to run to.
+:::
+
+## The cup problem {.slide}
+
+::: {.stage}
+::: {.left}
+```{r}
+ripr_problem2d(cup_problem, height = 470)
+```
+:::
+
+::: {.right .statement}
+A continuous family now — one Gaussian draw with known covariance,
+$$X \sim \mathrm{N}(\theta, I_2), \qquad \theta \in \mathbb{R}^2 .$$
+
+The alternative is a mixture of five, equally weighted, ringing the null:
+$$Q = \int \mathrm{N}(\theta, I_2)\, \mathrm{d}W(\theta), \qquad
+W = \tfrac{1}{5} \sum_{j=1}^{5} \delta_{q_j},$$
+with $q_1 = (0, -1.6)$, $q_{2,3} = (\mp 1.9,\ 0.3)$ and
+$q_{4,5} = (\mp 2.3,\ 2.2)$.
+
+The null is a single unbounded polyhedron — a cup, four vertices along the
+floor and two rays running up the sides:
+$$H_0 : \theta \in \mathrm{conv}(V) + \mathrm{cone}(R), \qquad
+V = \begin{pmatrix} -1 & -0.4 & 0.4 & 1 \\ 0 & -0.6 & -0.6 & 0 \end{pmatrix},
+\quad
+R = \begin{pmatrix} -0.3 & 0.3 \\ 1 & 1 \end{pmatrix} .$$
+
+The projection is the same problem — $\mathcal{P}_0$ is convex in $\theta$,
+but its hull over measures is still larger than $\mathcal{P}_0$ itself:
+$$P^\star = \operatorname*{arg\,min}_{P \in \mathrm{conv}(\mathcal{P}_0)}
+   D_{\mathrm{KL}}(Q \,\|\, P).$$
+:::
+:::
+
+::: {.caption}
+Grey is the null, receding past the frame along its rays; the black points
+are the atoms of $Q$. The frame is sized to the vertices and the atoms, so
+the geometry nearest the alternative fills the view however far the cup runs.
+:::
+
+## Fitting the projection {.slide}
+
+```{r}
+ripr_fit2d(cup_problem, cup_fit, height = 545)
+```
+
+::: {.caption}
+The same alternation, with $g_i$ now a Monte Carlo expectation over draws
+from $Q$ frozen for the whole fit — the drawn field uses the same draws, so
+the gap markers agree with it by construction. There is no certifying slide:
+the only bounding method is the Bernstein enclosure of a multinomial
+expectation over a simplex, and this null is unbounded besides.
 :::

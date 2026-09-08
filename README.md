@@ -45,8 +45,9 @@ See `vignette("riprvis")` for a full worked example, and
 
 ## The slide deck
 
-Six revealjs slides (`search-slides.qmd`) driven by live `ripr` runs. Two
-examples, each stated, fitted, then certified:
+Eight revealjs slides (`search-slides.qmd`) driven by live `ripr` runs. Two
+multinomial examples, each stated, fitted, then certified, and a Gaussian
+example with an unbounded polyhedral null, stated and fitted:
 
 1. The plurality problem
 2. Fitting the projection (plurality)
@@ -54,6 +55,8 @@ examples, each stated, fitted, then certified:
 4. The medial-triangle problem
 5. Fitting the projection (medial)
 6. Certifying the fit (medial)
+7. The cup problem
+8. Fitting the projection (cup)
 
 View the slides on the
 [GitHub Pages site](https://fleverest.github.io/ripr-vis).

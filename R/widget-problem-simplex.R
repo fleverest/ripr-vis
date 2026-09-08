@@ -4,12 +4,12 @@
 #' convex parts, filled as one region with each part's boundary dashed -- and
 #' the support of the alternative `Q`, with atom area proportional to weight.
 #'
-#' @param problem The payload from [ripr_problem_data()].
+#' @param problem The payload from [ripr_problem_simplex_data()].
 #' @param width,height,elementId Standard [htmlwidgets::createWidget()]
 #'   arguments.
 #' @return An htmlwidget.
 #' @examples
-#' ripr_problem(ripr_problem_data(
+#' ripr_problem_simplex(ripr_problem_simplex_data(
 #'   null = list(
 #'     cbind(c(0.5, 0.5, 0), c(0, 1, 0), c(0, 0, 1)),
 #'     cbind(c(0.5, 0, 0.5), c(0, 1, 0), c(0, 0, 1))
@@ -17,21 +17,21 @@
 #'   q = c(0.40, 0.34, 0.26)
 #' ))
 #' @export
-ripr_problem <- function(problem, width = NULL, height = NULL,
+ripr_problem_simplex <- function(problem, width = NULL, height = NULL,
                          elementId = NULL) {
-  check_problem(problem)
+  check_problem_simplex(problem)
   ripr_widget(
-    "ripr_problem", problem,
+    "ripr_problem_simplex", problem,
     default_height = 460,
     width = width, height = height, elementId = elementId
   )
 }
 
-check_problem <- function(problem) {
+check_problem_simplex <- function(problem) {
   stop_unless(
     is.list(problem) &&
       all(c("seeds", "marks", "labels") %in% names(problem)),
-    "`problem` must be a payload from ripr_problem_data()"
+    "`problem` must be a payload from ripr_problem_simplex_data()"
   )
 }
 
@@ -51,16 +51,20 @@ NULL
 
 #' @rdname riprvis-shiny
 #' @export
-riprProblemOutput <- function(outputId, width = "100%", height = "460px") {
+riprProblemSimplexOutput <- function(outputId, width = "100%",
+                                     height = "460px") {
   htmlwidgets::shinyWidgetOutput(
-    outputId, "ripr_problem", width, height,
+    outputId, "ripr_problem_simplex", width, height,
     package = "riprvis"
   )
 }
 
 #' @rdname riprvis-shiny
 #' @export
-renderRiprProblem <- function(expr, env = parent.frame(), quoted = FALSE) {
+renderRiprProblemSimplex <- function(expr, env = parent.frame(),
+                                     quoted = FALSE) {
   if (!quoted) expr <- substitute(expr)
-  htmlwidgets::shinyRenderWidget(expr, riprProblemOutput, env, quoted = TRUE)
+  htmlwidgets::shinyRenderWidget(
+    expr, riprProblemSimplexOutput, env, quoted = TRUE
+  )
 }

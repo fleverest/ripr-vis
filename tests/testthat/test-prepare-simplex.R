@@ -40,7 +40,7 @@ test_that("problem payload splits vertices into columns and defaults labels", {
   expect_equal(as.numeric(pr$marks$weights), 1)
   expect_equal(as.character(pr$labels$parts), c("a", "b"))
 
-  defaulted <- ripr_problem_data(
+  defaulted <- ripr_problem_simplex_data(
     null = list(diag(3)),
     q = cbind(c(0.6, 0.2, 0.2), c(0.2, 0.6, 0.2))
   )
@@ -50,18 +50,20 @@ test_that("problem payload splits vertices into columns and defaults labels", {
 
 test_that("problem payload validates weights and labels lengths", {
   expect_error(
-    ripr_problem_data(list(diag(3)), q = diag(3), weights = 1),
+    ripr_problem_simplex_data(list(diag(3)), q = diag(3), weights = 1),
     "one entry per column"
   )
   expect_error(
-    ripr_problem_data(list(diag(3)), q = c(1, 0, 0), part_labels = c("a", "b")),
+    ripr_problem_simplex_data(
+      list(diag(3)), q = c(1, 0, 0), part_labels = c("a", "b")
+    ),
     "one entry per part"
   )
 })
 
 test_that("fit payload lines snapshots up with their trace rows", {
   lat <- tiny_lattice(2L)
-  fit <- ripr_fit_data(tiny_state(), lat, q = c(0.4, 0.34, 0.26))
+  fit <- ripr_fit_simplex_data(tiny_state(), lat, q = c(0.4, 0.34, 0.26))
   expect_length(fit$ratio, 2L)
   expect_length(fit$ratio[[1]], 6L)
   expect_equal(as.numeric(fit$kl), c(0.5, 0.4))
@@ -79,17 +81,17 @@ test_that("fit payload lines snapshots up with their trace rows", {
 test_that("fit payload accepts a precomputed q_pmf and validates lengths", {
   lat <- tiny_lattice(2L)
   q_pmf <- riprvis:::lattice_pmf(lat, c(0.4, 0.34, 0.26))
-  fit <- ripr_fit_data(tiny_state(), lat, q_pmf = q_pmf)
+  fit <- ripr_fit_simplex_data(tiny_state(), lat, q_pmf = q_pmf)
   expect_length(fit$ratio, 2L)
   expect_error(
-    ripr_fit_data(tiny_state(), lat, q_pmf = 1:3),
+    ripr_fit_simplex_data(tiny_state(), lat, q_pmf = 1:3),
     "one entry per lattice outcome"
   )
-  expect_error(ripr_fit_data(tiny_state(), lat), "supply either")
+  expect_error(ripr_fit_simplex_data(tiny_state(), lat), "supply either")
 })
 
 test_that("certify payload is organised per cell", {
-  cert <- ripr_certify_data(tiny_nodes(), tol = 1e-9)
+  cert <- ripr_certify_simplex_data(tiny_nodes(), tol = 1e-9)
   expect_length(cert$cells, 2L)
   expect_equal(cert$cells[[1]]$part, 1L)
   expect_equal(cert$cells[[2]]$part, 2L)
@@ -104,5 +106,5 @@ test_that("certify payload is organised per cell", {
 test_that("certify payload flags pre-cell node tables", {
   old <- tiny_nodes()
   names(old$nodes)[names(old$nodes) == "cell"] <- "subnull"
-  expect_error(ripr_certify_data(old), "pre-cell ripr version")
+  expect_error(ripr_certify_simplex_data(old), "pre-cell ripr version")
 })

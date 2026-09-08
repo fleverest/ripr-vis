@@ -19,5 +19,10 @@ Useful links:
 \author{
 \strong{Maintainer}: Floyd Everest \email{me@floydeverest.com}
 
+Authors:
+\itemize{
+  \item Floyd Everest \email{me@floydeverest.com}
+}
+
 }
 \keyword{internal}

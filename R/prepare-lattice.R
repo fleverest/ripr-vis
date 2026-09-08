@@ -1,7 +1,7 @@
 #' Lattice payload for the Bernstein field
 #'
-#' The field \eqn{G_i(\theta) = E_\theta[Q/P_i]} drawn by [ripr_fit()] is a
-#' polynomial whose Bernstein coefficients on the simplex are the pointwise
+#' The field \eqn{G_i(\theta) = E_\theta[Q/P_i]} drawn by [ripr_fit_simplex()]
+#' is a polynomial whose Bernstein coefficients on the simplex are the pointwise
 #' ratios \eqn{Q(y)/P_i(y)}, so the widget rebuilds the Bernstein basis in the
 #' browser from the outcome lattice and each fitted iterate then crosses as one
 #' coefficient vector rather than a grid of evaluations. This helper packages
@@ -14,7 +14,7 @@
 #'   category, each row summing to `n_trials`).
 #' @return A list with elements `n` (number of trials), `outcomes` (a list of
 #'   per-outcome count vectors) and `log_choose` (log multinomial
-#'   coefficients, aligned with `outcomes`), shaped for [ripr_fit()].
+#'   coefficients, aligned with `outcomes`), shaped for [ripr_fit_simplex()].
 #' @examplesIf requireNamespace("ripr", quietly = TRUE)
 #' ripr_lattice_data(ripr::multinomial_family(n_trials = 4L, k = 3L))
 #' @export

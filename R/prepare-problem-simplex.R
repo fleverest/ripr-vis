@@ -2,8 +2,8 @@
 #'
 #' Packages the geometry every widget draws for context: the convex parts
 #' whose union is the null hypothesis, and the support of the alternative `Q`.
-#' All three widgets ([ripr_problem()], [ripr_fit()], [ripr_certify()]) take
-#' this as their first argument.
+#' All three simplex widgets ([ripr_problem_simplex()], [ripr_fit_simplex()],
+#' [ripr_certify_simplex()]) take this as their first argument.
 #'
 #' @param null A `ripr::null_model()`, a list of `ripr` convex regions, **or**
 #'   a plain list of vertex matrices (one per part, categories by vertices --
@@ -18,13 +18,13 @@
 #' @return A list with elements `seeds` (per-part vertex lists), `marks` (the
 #'   alternative's atoms and weights) and `labels`.
 #' @examples
-#' ripr_problem_data(
+#' ripr_problem_simplex_data(
 #'   null = list(cbind(c(.5, .5, 0), c(0, 1, 0), c(0, 0, 1))),
 #'   q = c(0.4, 0.34, 0.26),
 #'   part_labels = "example part"
 #' )
 #' @export
-ripr_problem_data <- function(null, q, weights = NULL, title = "ripr",
+ripr_problem_simplex_data <- function(null, q, weights = NULL, title = "ripr",
                               part_labels = NULL) {
   seeds <- part_vertices(null)
   q <- as.matrix(q)

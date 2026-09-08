@@ -49,13 +49,13 @@ plurality <- null_model(
 )
 q <- c(0.40, 0.34, 0.26)
 
-problem <- ripr_problem_data(
+problem <- ripr_problem_simplex_data(
   plurality,
   q = q,
   title = "plurality",
   part_labels = c("θ₁ ≤ θ₂", "θ₁ ≤ θ₃")
 )
-ripr_problem(problem)
+ripr_problem_simplex(problem)
 ```
 
 ## Fitting the projection
@@ -77,8 +77,8 @@ for (i in seq_len(15L)) {
 }
 
 lattice <- ripr_lattice_data(family)
-fit <- ripr_fit_data(state, lattice, q = q)
-ripr_fit(problem, fit, lattice)
+fit <- ripr_fit_simplex_data(state, lattice, q = q)
+ripr_fit_simplex(problem, fit, lattice)
 ```
 
 Drag the step slider (or press play) to watch the field
@@ -101,8 +101,8 @@ x <- likelihood(family(q), label = "Q") /
   likelihood(finished$P_star, label = "P*")
 nodes <- certify_trace(x, plurality, tol = 1e-9)
 
-certify <- ripr_certify_data(nodes, tol = 1e-9)
-ripr_certify(problem, certify)
+certify <- ripr_certify_simplex_data(nodes, tol = 1e-9)
+ripr_certify_simplex(problem, certify)
 ```
 
 Each cell of the null is searched independently — the tabs choose a search,
@@ -178,7 +178,8 @@ ripr_fit2d(problem2d, fit2d)
 ## Without ripr
 
 The widget constructors never touch `ripr`: they take plain-list payloads
-whose shapes are documented in `ripr_problem_data()`, `ripr_fit_data()`,
-`ripr_lattice_data()` and `ripr_certify_data()`. Saved results — say, the
-payloads above serialised with `saveRDS()` on a machine that has `ripr` —
-render anywhere this package is installed.
+whose shapes are documented in `ripr_problem_simplex_data()`,
+`ripr_fit_simplex_data()`, `ripr_lattice_data()` and
+`ripr_certify_simplex_data()`. Saved results — say, the payloads above
+serialised with `saveRDS()` on a machine that has `ripr` — render anywhere
+this package is installed.

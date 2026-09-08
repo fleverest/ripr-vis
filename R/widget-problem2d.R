@@ -8,7 +8,7 @@
 #' extends.
 #'
 #' @param problem The payload from [ripr_problem2d_data()].
-#' @inheritParams ripr_problem
+#' @inheritParams ripr_problem_simplex
 #' @return An htmlwidget.
 #' @examples
 #' ripr_problem2d(ripr_problem2d_data(

@@ -9,19 +9,19 @@
 #' fit, with the current step picked out. A step slider and play toggle drive
 #' the animation.
 #'
-#' @param problem The payload from [ripr_problem_data()].
-#' @param fit The payload from [ripr_fit_data()].
+#' @param problem The payload from [ripr_problem_simplex_data()].
+#' @param fit The payload from [ripr_fit_simplex_data()].
 #' @param lattice The payload from [ripr_lattice_data()]; the widget rebuilds
 #'   the Bernstein basis from it in the browser.
-#' @inheritParams ripr_problem
+#' @inheritParams ripr_problem_simplex
 #' @return An htmlwidget.
 #' @export
-ripr_fit <- function(problem, fit, lattice, width = NULL, height = NULL,
+ripr_fit_simplex <- function(problem, fit, lattice, width = NULL, height = NULL,
                      elementId = NULL) {
-  check_problem(problem)
+  check_problem_simplex(problem)
   stop_unless(
     is.list(fit) && all(c("ratio", "support", "kl") %in% names(fit)),
-    "`fit` must be a payload from ripr_fit_data()"
+    "`fit` must be a payload from ripr_fit_simplex_data()"
   )
   stop_unless(
     is.list(lattice) &&
@@ -33,7 +33,7 @@ ripr_fit <- function(problem, fit, lattice, width = NULL, height = NULL,
     "each ratio vector in `fit` must have one entry per lattice outcome"
   )
   ripr_widget(
-    "ripr_fit", c(problem, list(fit = fit, lattice = lattice)),
+    "ripr_fit_simplex", c(problem, list(fit = fit, lattice = lattice)),
     default_height = 520,
     width = width, height = height, elementId = elementId
   )
@@ -41,16 +41,18 @@ ripr_fit <- function(problem, fit, lattice, width = NULL, height = NULL,
 
 #' @rdname riprvis-shiny
 #' @export
-riprFitOutput <- function(outputId, width = "100%", height = "520px") {
+riprFitSimplexOutput <- function(outputId, width = "100%", height = "520px") {
   htmlwidgets::shinyWidgetOutput(
-    outputId, "ripr_fit", width, height,
+    outputId, "ripr_fit_simplex", width, height,
     package = "riprvis"
   )
 }
 
 #' @rdname riprvis-shiny
 #' @export
-renderRiprFit <- function(expr, env = parent.frame(), quoted = FALSE) {
+renderRiprFitSimplex <- function(expr, env = parent.frame(), quoted = FALSE) {
   if (!quoted) expr <- substitute(expr)
-  htmlwidgets::shinyRenderWidget(expr, riprFitOutput, env, quoted = TRUE)
+  htmlwidgets::shinyRenderWidget(
+    expr, riprFitSimplexOutput, env, quoted = TRUE
+  )
 }

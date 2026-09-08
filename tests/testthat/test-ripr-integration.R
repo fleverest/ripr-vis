@@ -31,11 +31,11 @@ test_that("payloads build from real ripr objects", {
   m <- choose(n_trials + 2L, 2L)
   expect_length(lattice$outcomes, m)
 
-  problem <- ripr_problem_data(null, q, title = "tiny")
+  problem <- ripr_problem_simplex_data(null, q, title = "tiny")
   expect_length(problem$seeds, 2L)
   expect_length(problem$seeds[[1]], 3L)
 
-  fit <- ripr_fit_data(state, lattice, q = q)
+  fit <- ripr_fit_simplex_data(state, lattice, q = q)
   expect_gte(length(fit$ratio), 6L)
   expect_true(all(lengths(fit$ratio) == m))
   expect_length(fit$kl, length(fit$ratio))
@@ -49,16 +49,16 @@ test_that("payloads build from real ripr objects", {
     ripr::likelihood(finished$P_star, label = "P*")
   nodes <- ripr::certify_trace(x, null, tol = 1e-6)
 
-  cert <- ripr_certify_data(nodes, tol = 1e-6)
+  cert <- ripr_certify_simplex_data(nodes, tol = 1e-6)
   expect_gte(length(cert$cells), 2L)
   expect_length(cert$upper, length(cert$cells))
   expect_length(cert$lower, length(cert$cells))
   expect_true(is.numeric(cert$certificate$sup_ub))
 
-  w <- ripr_certify(problem, cert)
+  w <- ripr_certify_simplex(problem, cert)
   x_parsed <- payload_of(w)
   expect_length(x_parsed$labels$cells, length(cert$cells))
 
-  w_fit <- ripr_fit(problem, fit, lattice)
+  w_fit <- ripr_fit_simplex(problem, fit, lattice)
   expect_s3_class(w_fit, "htmlwidget")
 })

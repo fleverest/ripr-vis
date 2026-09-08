@@ -1,7 +1,7 @@
 /* The planar problem, stated: the null region's polyhedral parts (possibly
  * unbounded -- vertices plus recession rays and lineality directions) and the
  * alternative's support over the parameter plane. The planar analogue of
- * ripr_problem.js. */
+ * ripr_problem_simplex.js. */
 HTMLWidgets.widget({
   name: "ripr_problem2d",
   type: "output",

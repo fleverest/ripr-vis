@@ -1,7 +1,7 @@
 #' Fitting a planar projection: the field over the parameter plane
 #'
-#' The planar analogue of [ripr_fit()], for two-dimensional families such as
-#' `ripr::gaussian_family()`. The left panel draws the field
+#' The planar analogue of [ripr_fit_simplex()], for two-dimensional families
+#' such as `ripr::gaussian_family()`. The left panel draws the field
 #' \eqn{G_i(\theta) = E_\theta[Q/P_i]} as filled contour bands over the
 #' parameter plane -- red where it exceeds one, with the \eqn{G = 1} level
 #' set drawn solid -- the null's polyhedral parts dashed over it (receding
@@ -13,7 +13,7 @@
 #'
 #' @param problem The payload from [ripr_problem2d_data()].
 #' @param fit The payload from [ripr_fit2d_data()].
-#' @inheritParams ripr_problem
+#' @inheritParams ripr_problem_simplex
 #' @return An htmlwidget.
 #' @export
 ripr_fit2d <- function(problem, fit, width = NULL, height = NULL,

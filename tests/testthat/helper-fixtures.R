@@ -86,7 +86,7 @@ tiny_nodes <- function() {
 }
 
 tiny_problem <- function() {
-  ripr_problem_data(
+  ripr_problem_simplex_data(
     null = list(
       cbind(c(0.5, 0.5, 0), c(0, 1, 0), c(0, 0, 1)),
       cbind(c(0.5, 0, 0.5), c(0, 1, 0), c(0, 0, 1))

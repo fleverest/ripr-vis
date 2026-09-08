@@ -1,7 +1,7 @@
 #' Certification payload: the branch-and-bound record
 #'
 #' Packages the node table and per-iteration traces recorded by
-#' `ripr::certify_trace()` for [ripr_certify()]. The search runs one
+#' `ripr::certify_trace()` for [ripr_certify_simplex()]. The search runs one
 #' branch-and-bound tree per *cell* (a triangulated piece of a declared part
 #' of the null; a part that is already a simplex is its own single cell), so
 #' the node ids, traces and enclosure windows here are all per cell, with
@@ -19,9 +19,9 @@
 #' @return A list with elements `cells` (one `list(part, vertices)` per cell,
 #'   the vertices being the cell's root region), `nodes` (the node table as
 #'   parallel arrays), `upper`/`lower` (per-cell bound and incumbent traces)
-#'   and `certificate`, shaped for [ripr_certify()].
+#'   and `certificate`, shaped for [ripr_certify_simplex()].
 #' @export
-ripr_certify_data <- function(nodes, tol = NULL) {
+ripr_certify_simplex_data <- function(nodes, tol = NULL) {
   tab <- if (is.data.frame(nodes)) nodes else nodes$nodes
   needed <- c(
     "part", "cell", "id", "parent", "depth", "born", "retired", "fate",

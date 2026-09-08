@@ -16,15 +16,15 @@
 #'   `phase`, `kl`, `gap` and a `gap_theta` list column) and `snapshots` (a
 #'   list of `list(iters, phase, atoms, weights)` as `ripr` records them).
 #' @param lattice The lattice payload from [ripr_lattice_data()].
-#' @param q,weights The alternative, as in [ripr_problem_data()]: a
+#' @param q,weights The alternative, as in [ripr_problem_simplex_data()]: a
 #'   categories-by-atoms matrix (or vector) and mixture weights over its
 #'   columns. Used to evaluate `Q`'s pmf over the lattice. Alternatively pass
 #'   `q_pmf` directly and leave these `NULL`.
 #' @param q_pmf `Q`'s pmf over the lattice outcomes, if already computed.
 #' @return A list with elements `ratio`, `support`, `kl`, `gap`, `gap_theta`
-#'   and `phase`, one entry per snapshot, shaped for [ripr_fit()].
+#'   and `phase`, one entry per snapshot, shaped for [ripr_fit_simplex()].
 #' @export
-ripr_fit_data <- function(state, lattice, q = NULL, weights = NULL,
+ripr_fit_simplex_data <- function(state, lattice, q = NULL, weights = NULL,
                           q_pmf = NULL) {
   trace <- field(state, "trace")
   snapshots <- field(state, "snapshots")

@@ -4,7 +4,7 @@
  * search-slides.qmd. The Bernstein basis (RiprVis.buildGrid) is expensive, so
  * it is built once per renderValue and reused for every step's contour. */
 HTMLWidgets.widget({
-  name: "ripr_fit",
+  name: "ripr_fit_simplex",
   type: "output",
 
   factory: function (el, width, height) {

@@ -1,6 +1,6 @@
 /* Fitting the projection over the parameter plane: the field
  * G_i(theta) = E_theta[Q/P_i] over the course of a Frank-Wolfe/EM fit,
- * alongside its KL/gap/log-growth trace. The planar analogue of ripr_fit.js.
+ * alongside its KL/gap/log-growth trace. The planar analogue of ripr_fit_simplex.js.
  * Unlike the ternary field the grid values arrive precomputed from R (there
  * is no finite Bernstein basis for a continuous family), so drawField2d only
  * has to contour and colour them; the contour transform (grid index ->

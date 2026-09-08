@@ -190,29 +190,29 @@ fit_cup <- ripr_finish(
 # R-to-browser crossing that the old ojs_define()/JSON plumbing did by hand.
 lattice <- ripr_lattice_data(family)
 
-plur_problem <- ripr_problem_data(
+plur_problem <- ripr_problem_simplex_data(
   plurality,
   q = q_plur,
   title = "plurality",
   part_labels = c("θ₁ ≤ θ₂", "θ₁ ≤ θ₃")
 )
-plur_fit <- ripr_fit_data(state_plur, lattice, q = q_plur)
-plur_cert <- ripr_certify_data(nodes_plur, tol = TOL)
+plur_fit <- ripr_fit_simplex_data(state_plur, lattice, q = q_plur)
+plur_cert <- ripr_certify_simplex_data(nodes_plur, tol = TOL)
 
-med_problem <- ripr_problem_data(
+med_problem <- ripr_problem_simplex_data(
   medial,
   q = q_med,
   weights = rep(1 / 3, 3L),
   title = "medial",
   part_labels = "θⱼ ≤ ½ for every j"
 )
-med_fit <- ripr_fit_data(
+med_fit <- ripr_fit_simplex_data(
   state_med,
   lattice,
   q = q_med,
   weights = rep(1 / 3, 3L)
 )
-med_cert <- ripr_certify_data(nodes_med, tol = TOL)
+med_cert <- ripr_certify_simplex_data(nodes_med, tol = TOL)
 
 # The planar payloads: the cup's generators frame the view, and the field is
 # evaluated in R on that frame's grid with the fit's own frozen draws.
@@ -231,7 +231,7 @@ cup_fit <- ripr_fit2d_data(state_cup, cup_problem)
 ::: {.stage}
 ::: {.left}
 ```{r}
-ripr_problem(plur_problem, height = 470)
+ripr_problem_simplex(plur_problem, height = 470)
 ```
 :::
 
@@ -263,7 +263,7 @@ is a point in the triangle, so the whole problem is drawable.
 ## Fitting the projection {.slide}
 
 ```{r}
-ripr_fit(plur_problem, plur_fit, lattice, height = 545)
+ripr_fit_simplex(plur_problem, plur_fit, lattice, height = 545)
 ```
 
 ::: {.caption}
@@ -275,7 +275,7 @@ is done when no red is left inside the dashed region.
 ## Certifying the fit {.slide}
 
 ```{r}
-ripr_certify(plur_problem, plur_cert, height = 545)
+ripr_certify_simplex(plur_problem, plur_cert, height = 545)
 ```
 
 ::: {.caption}
@@ -289,7 +289,7 @@ closing; the certified bound is the larger of the two facets'.
 ::: {.stage}
 ::: {.left}
 ```{r}
-ripr_problem(med_problem, height = 470)
+ripr_problem_simplex(med_problem, height = 470)
 ```
 :::
 
@@ -322,7 +322,7 @@ vertex of the simplex.
 ## Fitting the projection {.slide}
 
 ```{r}
-ripr_fit(med_problem, med_fit, lattice, height = 545)
+ripr_fit_simplex(med_problem, med_fit, lattice, height = 545)
 ```
 
 ::: {.caption}
@@ -333,7 +333,7 @@ reweights the atoms already there.
 ## Certifying the fit {.slide}
 
 ```{r}
-ripr_certify(med_problem, med_cert, height = 545)
+ripr_certify_simplex(med_problem, med_cert, height = 545)
 ```
 
 ::: {.caption}

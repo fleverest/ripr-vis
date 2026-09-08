@@ -1,6 +1,7 @@
-# A minimal Shiny app exercising all three widgets and, in particular, the
-# re-render path: switching the number of fit iterations re-renders ripr_fit,
-# which must tear down its play loop rather than leave it accelerating.
+# A minimal Shiny app exercising all three simplex widgets and, in particular,
+# the re-render path: switching the number of fit iterations re-renders
+# ripr_fit_simplex, which must tear down its play loop rather than leave it
+# accelerating.
 # Run with: shiny::runApp(system.file("examples", package = "riprvis"))
 
 library(shiny)
@@ -18,7 +19,7 @@ plurality <- null_model(
 )
 q <- c(0.40, 0.34, 0.26)
 lattice <- ripr_lattice_data(family)
-problem <- ripr_problem_data(
+problem <- ripr_problem_simplex_data(
   plurality,
   q = q,
   title = "plurality",
@@ -42,22 +43,22 @@ fit_state <- function(iters) {
 ui <- fluidPage(
   titlePanel("riprvis"),
   sliderInput("iters", "fit iterations", min = 2L, max = 15L, value = 8L),
-  riprFitOutput("fit", height = "540px"),
-  riprCertifyOutput("certify", height = "580px"),
-  riprProblemOutput("problem", height = "440px")
+  riprFitSimplexOutput("fit", height = "540px"),
+  riprCertifySimplexOutput("certify", height = "580px"),
+  riprProblemSimplexOutput("problem", height = "440px")
 )
 
 server <- function(input, output, session) {
   state <- reactive(fit_state(input$iters))
 
-  output$problem <- renderRiprProblem(ripr_problem(problem))
+  output$problem <- renderRiprProblemSimplex(ripr_problem_simplex(problem))
 
-  output$fit <- renderRiprFit({
-    fit <- ripr_fit_data(state(), lattice, q = q)
-    ripr_fit(problem, fit, lattice)
+  output$fit <- renderRiprFitSimplex({
+    fit <- ripr_fit_simplex_data(state(), lattice, q = q)
+    ripr_fit_simplex(problem, fit, lattice)
   })
 
-  output$certify <- renderRiprCertify({
+  output$certify <- renderRiprCertifySimplex({
     finished <- ripr_finish(
       state(),
       reoptimise = TRUE, identify = TRUE, record_gap = TRUE
@@ -65,7 +66,7 @@ server <- function(input, output, session) {
     x <- likelihood(family(q), label = "Q") /
       likelihood(finished$P_star, label = "P*")
     nodes <- certify_trace(x, plurality, tol = 1e-9)
-    ripr_certify(problem, ripr_certify_data(nodes, tol = 1e-9))
+    ripr_certify_simplex(problem, ripr_certify_simplex_data(nodes, tol = 1e-9))
   })
 }
 

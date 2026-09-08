@@ -1,7 +1,7 @@
 #' Planar fit payload: the field of a RIPr fit over a grid of means
 #'
-#' The planar analogue of [ripr_fit_data()], for two-dimensional families
-#' such as `ripr::gaussian_family()`. On the simplex the field
+#' The planar analogue of [ripr_fit_simplex_data()], for two-dimensional
+#' families such as `ripr::gaussian_family()`. On the simplex the field
 #' \eqn{G_i(\theta) = E_\theta[Q/P_i]} crosses to the browser as Bernstein
 #' coefficients; a continuous family has no such finite basis, so this helper
 #' evaluates the field in R over the plotting grid, one grid of values per
@@ -17,7 +17,7 @@
 #' @param state A `ripr` fit state (the result of `ripr::ripr_init()` with a
 #'   quadrature engine, advanced by `ripr::fw_step()`/`ripr::em_step()`),
 #'   **or** a plain list with elements `trace` and `snapshots` as in
-#'   [ripr_fit_data()] plus an `engine` element `list(nodes = <M x 2
+#'   [ripr_fit_simplex_data()] plus an `engine` element `list(nodes = <M x 2
 #'   matrix>, log_w = <length-M vector>)` of quadrature nodes and log
 #'   weights.
 #' @param problem The payload from [ripr_problem2d_data()]; fixes the grid

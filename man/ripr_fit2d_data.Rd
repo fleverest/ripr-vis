@@ -10,7 +10,7 @@ ripr_fit2d_data(state, problem, sigma = NULL, nx = 112L)
 \item{state}{A \code{ripr} fit state (the result of \code{ripr::ripr_init()} with a
 quadrature engine, advanced by \code{ripr::fw_step()}/\code{ripr::em_step()}),
 \strong{or} a plain list with elements \code{trace} and \code{snapshots} as in
-\code{\link[=ripr_fit_data]{ripr_fit_data()}} plus an \code{engine} element \verb{list(nodes = <M x 2 matrix>, log_w = <length-M vector>)} of quadrature nodes and log
+\code{\link[=ripr_fit_simplex_data]{ripr_fit_simplex_data()}} plus an \code{engine} element \verb{list(nodes = <M x 2 matrix>, log_w = <length-M vector>)} of quadrature nodes and log
 weights.}
 
 \item{problem}{The payload from \code{\link[=ripr_problem2d_data]{ripr_problem2d_data()}}; fixes the grid
@@ -29,8 +29,8 @@ snapshot, row-major from the bottom-left), and the usual \code{support},
 \code{\link[=ripr_fit2d]{ripr_fit2d()}}.
 }
 \description{
-The planar analogue of \code{\link[=ripr_fit_data]{ripr_fit_data()}}, for two-dimensional families
-such as \code{ripr::gaussian_family()}. On the simplex the field
+The planar analogue of \code{\link[=ripr_fit_simplex_data]{ripr_fit_simplex_data()}}, for two-dimensional
+families such as \code{ripr::gaussian_family()}. On the simplex the field
 \eqn{G_i(\theta) = E_\theta[Q/P_i]} crosses to the browser as Bernstein
 coefficients; a continuous family has no such finite basis, so this helper
 evaluates the field in R over the plotting grid, one grid of values per

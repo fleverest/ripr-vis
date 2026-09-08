@@ -1,7 +1,7 @@
 /* The problem, stated: the null region's parts and the alternative's support
  * on the ternary simplex. Ported from drawProblem() in search-slides.qmd. */
 HTMLWidgets.widget({
-  name: "ripr_problem",
+  name: "ripr_problem_simplex",
   type: "output",
 
   factory: function (el, width, height) {

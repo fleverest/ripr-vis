@@ -18,8 +18,8 @@ arguments.}
 An htmlwidget.
 }
 \description{
-The planar analogue of \code{\link[=ripr_fit]{ripr_fit()}}, for two-dimensional families such as
-\code{ripr::gaussian_family()}. The left panel draws the field
+The planar analogue of \code{\link[=ripr_fit_simplex]{ripr_fit_simplex()}}, for two-dimensional families
+such as \code{ripr::gaussian_family()}. The left panel draws the field
 \eqn{G_i(\theta) = E_\theta[Q/P_i]} as filled contour bands over the
 parameter plane -- red where it exceeds one, with the \eqn{G = 1} level
 set drawn solid -- the null's polyhedral parts dashed over it (receding

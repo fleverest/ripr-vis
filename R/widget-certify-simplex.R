@@ -11,18 +11,18 @@
 #' selects which cell's search to watch; a slider and play toggle drive the
 #' iteration.
 #'
-#' @param problem The payload from [ripr_problem_data()].
-#' @param certify The payload from [ripr_certify_data()].
-#' @inheritParams ripr_problem
+#' @param problem The payload from [ripr_problem_simplex_data()].
+#' @param certify The payload from [ripr_certify_simplex_data()].
+#' @inheritParams ripr_problem_simplex
 #' @return An htmlwidget.
 #' @export
-ripr_certify <- function(problem, certify, width = NULL, height = NULL,
+ripr_certify_simplex <- function(problem, certify, width = NULL, height = NULL,
                          elementId = NULL) {
-  check_problem(problem)
+  check_problem_simplex(problem)
   stop_unless(
     is.list(certify) &&
       all(c("cells", "nodes", "upper", "lower") %in% names(certify)),
-    "`certify` must be a payload from ripr_certify_data()"
+    "`certify` must be a payload from ripr_certify_simplex_data()"
   )
   parts <- vapply(certify$cells, function(cl) as.integer(cl$part), 1L)
   stop_unless(
@@ -42,7 +42,7 @@ ripr_certify <- function(problem, certify, width = NULL, height = NULL,
   payload$labels$cells <- I(labels)
 
   ripr_widget(
-    "ripr_certify", payload,
+    "ripr_certify_simplex", payload,
     default_height = 560,
     width = width, height = height, elementId = elementId
   )
@@ -50,16 +50,20 @@ ripr_certify <- function(problem, certify, width = NULL, height = NULL,
 
 #' @rdname riprvis-shiny
 #' @export
-riprCertifyOutput <- function(outputId, width = "100%", height = "560px") {
+riprCertifySimplexOutput <- function(outputId, width = "100%",
+                                     height = "560px") {
   htmlwidgets::shinyWidgetOutput(
-    outputId, "ripr_certify", width, height,
+    outputId, "ripr_certify_simplex", width, height,
     package = "riprvis"
   )
 }
 
 #' @rdname riprvis-shiny
 #' @export
-renderRiprCertify <- function(expr, env = parent.frame(), quoted = FALSE) {
+renderRiprCertifySimplex <- function(expr, env = parent.frame(),
+                                     quoted = FALSE) {
   if (!quoted) expr <- substitute(expr)
-  htmlwidgets::shinyRenderWidget(expr, riprCertifyOutput, env, quoted = TRUE)
+  htmlwidgets::shinyRenderWidget(
+    expr, riprCertifySimplexOutput, env, quoted = TRUE
+  )
 }

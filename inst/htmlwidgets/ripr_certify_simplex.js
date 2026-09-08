@@ -4,7 +4,7 @@
  * search the rest of the panel follows. Ported from aliveAt()/settled()/
  * drawSimplex()/drawWindows()/readout()/drawTree() in search-slides.qmd. */
 HTMLWidgets.widget({
-  name: "ripr_certify",
+  name: "ripr_certify_simplex",
   type: "output",
 
   factory: function (el, width, height) {

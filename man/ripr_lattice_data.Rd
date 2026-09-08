@@ -16,18 +16,18 @@ category, each row summing to \code{n_trials}).}
 \value{
 A list with elements \code{n} (number of trials), \code{outcomes} (a list of
 per-outcome count vectors) and \code{log_choose} (log multinomial
-coefficients, aligned with \code{outcomes}), shaped for \code{\link[=ripr_fit]{ripr_fit()}}.
+coefficients, aligned with \code{outcomes}), shaped for \code{\link[=ripr_fit_simplex]{ripr_fit_simplex()}}.
 }
 \description{
-The field \eqn{G_i(\theta) = E_\theta[Q/P_i]} drawn by \code{\link[=ripr_fit]{ripr_fit()}} is a
-polynomial whose Bernstein coefficients on the simplex are the pointwise
+The field \eqn{G_i(\theta) = E_\theta[Q/P_i]} drawn by \code{\link[=ripr_fit_simplex]{ripr_fit_simplex()}}
+is a polynomial whose Bernstein coefficients on the simplex are the pointwise
 ratios \eqn{Q(y)/P_i(y)}, so the widget rebuilds the Bernstein basis in the
 browser from the outcome lattice and each fitted iterate then crosses as one
 coefficient vector rather than a grid of evaluations. This helper packages
 the lattice once, for every step to share.
 }
 \examples{
-\dontshow{if (requireNamespace("ripr", quietly = TRUE)) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+\dontshow{if (requireNamespace("ripr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 ripr_lattice_data(ripr::multinomial_family(n_trials = 4L, k = 3L))
 \dontshow{\}) # examplesIf}
 }

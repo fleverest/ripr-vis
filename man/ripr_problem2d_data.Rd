@@ -37,8 +37,8 @@ lists), \code{marks}, \code{labels} and \code{extent} (\verb{$x} and \verb{$y} r
 for \code{\link[=ripr_problem2d]{ripr_problem2d()}} and \code{\link[=ripr_fit2d]{ripr_fit2d()}}.
 }
 \description{
-The planar analogue of \code{\link[=ripr_problem_data]{ripr_problem_data()}}, for two-dimensional families
-whose parameter is a point of the plane (e.g. the mean of a
+The planar analogue of \code{\link[=ripr_problem_simplex_data]{ripr_problem_simplex_data()}}, for two-dimensional
+families whose parameter is a point of the plane (e.g. the mean of a
 \code{ripr::gaussian_family()}). The null's parts are convex polyhedra given in
 V-representation -- vertices plus optional recession rays and lineality
 directions -- so unbounded parts draw correctly, clipped to the viewport.

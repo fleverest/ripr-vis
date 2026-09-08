@@ -1,7 +1,7 @@
 #' Planar problem payload: polyhedral null and alternative mean
 #'
-#' The planar analogue of [ripr_problem_data()], for two-dimensional families
-#' whose parameter is a point of the plane (e.g. the mean of a
+#' The planar analogue of [ripr_problem_simplex_data()], for two-dimensional
+#' families whose parameter is a point of the plane (e.g. the mean of a
 #' `ripr::gaussian_family()`). The null's parts are convex polyhedra given in
 #' V-representation -- vertices plus optional recession rays and lineality
 #' directions -- so unbounded parts draw correctly, clipped to the viewport.

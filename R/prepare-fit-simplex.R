@@ -8,8 +8,7 @@
 #' `kl`/`gap_after` diagnostics on the matching trace row.
 #'
 #' The fit must have been run with `ripr::ripr_control(snapshot = "all")` (or
-#' `"step"`). `fw_step()` fills the gap columns from its own oracle; the
-#' other verbs need `record_gap = TRUE` for their gap to appear.
+#' `"step"`), and `record_gap = TRUE` on the steps whose gap should appear.
 #'
 #' @param state A `ripr` fit state (the result of `ripr::ripr_init()` advanced
 #'   by `ripr::fw_step()`/`ripr::em_step()`), **or** a plain list with

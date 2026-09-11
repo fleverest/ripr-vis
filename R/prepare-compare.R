@@ -44,7 +44,7 @@
 #' \dontrun{
 #' set.seed(1L)
 #' fw <- ripr::ripr_init(Q, null, record_gap = TRUE) |>
-#'   ripr::fw_step(times = 20L)
+#'   ripr::fw_step(times = 20L, record_gap = TRUE)
 #' set.seed(1L)
 #' lb <- ripr::ripr_init(Q, null, record_gap = TRUE) |>
 #'   ripr::lb_step(times = 20L, record_gap = TRUE)

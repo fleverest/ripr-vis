@@ -23,7 +23,7 @@ test_that("payloads build from real ripr objects", {
   )
   for (i in 1:3) {
     state <- state |>
-      ripr::fw_step() |>
+      ripr::fw_step(record_gap = TRUE) |>
       ripr::em_step(record_gap = TRUE)
   }
 
@@ -81,7 +81,7 @@ test_that("ripr runs compare against each other on the trace's own clock", {
   )
   for (i in 1:2) {
     fw <- fw |>
-      ripr::fw_step() |>
+      ripr::fw_step(record_gap = TRUE) |>
       ripr::em_step()
   }
   set.seed(1L)

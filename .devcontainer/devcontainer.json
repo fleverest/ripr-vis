@@ -1,0 +1,32 @@
+{
+    "name": "riprvis",
+    "build": {
+        "dockerfile": "Containerfile",
+        "context": "."
+    },
+    // Rootless Podman: map the host user (whatever its UID) onto container UID
+    // 1000, so the image is identical on every device and files written to the
+    // bind mount stay owned by you on the host.
+    // label=disable is a no-op without SELinux but harmless to keep.
+    "runArgs": [
+        "--userns=keep-id:uid=1000,gid=1000",
+        "--name=fleverest",
+        "--security-opt",
+        "label=disable"
+    ],
+    // Dev Containers' own UID-matching assumes Docker's mapping model and
+    // fights keep-id; disable it.
+    "updateRemoteUserUID": false,
+    "containerUser": "fleverest",
+    "remoteUser": "fleverest",
+    "mounts": [
+        "source=riprvis-claude-config,target=/home/fleverest/.claude,type=volume",
+        "source=riprvis-renv-cache,target=/home/fleverest/.cache/R/renv,type=volume",
+        "source=../../.ssh/id_ed25519_signing,target=/home/fleverest/.ssh/id_ed25519_signing,type=bind,readonly",
+        "source=/run/user/1000/ssh-agent.socket,target=/ssh-agent,type=bind"
+    ],
+    "containerEnv": {
+        "SSH_AUTH_SOCK": "/ssh-agent"
+    },
+    "postStartCommand": "sh .devcontainer/setup.sh"
+}

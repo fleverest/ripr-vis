@@ -37,6 +37,5 @@ vector and support of every recorded iterate, and lines each up with the
 }
 \details{
 The fit must have been run with \code{ripr::ripr_control(snapshot = "all")} (or
-\code{"step"}). \code{fw_step()} fills the gap columns from its own oracle; the
-other verbs need \code{record_gap = TRUE} for their gap to appear.
+\code{"step"}), and \code{record_gap = TRUE} on the steps whose gap should appear.
 }

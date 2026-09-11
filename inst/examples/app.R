@@ -37,7 +37,7 @@ fit_state <- function(iters, add = fw_step) {
   )
   for (i in seq_len(iters)) {
     state <- state |>
-      add() |>
+      add(record_gap = TRUE) |>
       em_step(record_gap = TRUE)
   }
   state

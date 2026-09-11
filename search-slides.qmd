@@ -51,7 +51,7 @@ Q_plur <- family(as.vector(q_plur))
 #| include: false
 #| cache: true
 #| dependson: ["setup", "plurality-null"]
-# `record_gap = TRUE` at init and on the EM sweep: the sweep is not free, but
+# `record_gap = TRUE` at init and on both verbs: the sweep is not free, but
 # it is what puts a gap and a maximiser on every frame, the starting mixture
 # included, rather than every second one.
 set.seed(1L)
@@ -63,7 +63,7 @@ state_plur <- ripr_init(
 )
 for (i in seq_len(30L)) {
   state_plur <- state_plur |>
-    fw_step() |>
+    fw_step(record_gap = TRUE) |>
     em_step(record_gap = TRUE)
 }
 fit_plur <- ripr_finish(
@@ -95,7 +95,7 @@ nodes_plur <- certify_trace(X_plur, plurality, tol = TOL)
 # count.
 set.seed(1L)
 state_fw <- ripr_init(Q_plur, plurality, record_gap = TRUE) |>
-  fw_step(times = 30L)
+  fw_step(times = 30L, record_gap = TRUE)
 set.seed(1L)
 state_lb <- ripr_init(Q_plur, plurality, record_gap = TRUE) |>
   lb_step(times = 30L, record_gap = TRUE)
@@ -118,11 +118,13 @@ fw_variant <- function(variant, size) {
   set.seed(1L)
   state <- ripr_init(Q_plur, plurality, record_gap = TRUE)
   for (i in seq_len(30L)) {
-    state <- if (size == "fully-corrective") {
-      fw_step(state, variant = variant, size = "line-search", correct = TRUE)
-    } else {
-      fw_step(state, variant = variant, size = size)
-    }
+    state <- fw_step(
+      state,
+      variant = variant,
+      size = if (size == "fully-corrective") "line-search" else size,
+      correct = size == "fully-corrective",
+      record_gap = TRUE
+    )
   }
   state
 }
@@ -171,7 +173,7 @@ state_med <- ripr_init(
 )
 for (i in seq_len(30L)) {
   state_med <- state_med |>
-    fw_step() |>
+    fw_step(record_gap = TRUE) |>
     em_step(record_gap = TRUE)
 }
 fit_med <- ripr_finish(
@@ -236,7 +238,7 @@ state_cup <- ripr_init(
 )
 for (i in seq_len(20L)) {
   state_cup <- state_cup |>
-    fw_step() |>
+    fw_step(record_gap = TRUE) |>
     em_step(record_gap = TRUE)
 }
 fit_cup <- ripr_finish(

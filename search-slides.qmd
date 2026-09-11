@@ -51,7 +51,7 @@ Q_plur <- family(as.vector(q_plur))
 #| include: false
 #| cache: true
 #| dependson: ["setup", "plurality-null"]
-# `record_gap = TRUE` at init and on both verbs: the sweep is not free, but
+# `record_gap = TRUE` at init and on the EM sweep: the sweep is not free, but
 # it is what puts a gap and a maximiser on every frame, the starting mixture
 # included, rather than every second one.
 set.seed(1L)
@@ -63,7 +63,7 @@ state_plur <- ripr_init(
 )
 for (i in seq_len(30L)) {
   state_plur <- state_plur |>
-    fw_step(record_gap = TRUE) |>
+    fw_step() |>
     em_step(record_gap = TRUE)
 }
 fit_plur <- ripr_finish(
@@ -95,7 +95,7 @@ nodes_plur <- certify_trace(X_plur, plurality, tol = TOL)
 # count.
 set.seed(1L)
 state_fw <- ripr_init(Q_plur, plurality, record_gap = TRUE) |>
-  fw_step(times = 30L, record_gap = TRUE)
+  fw_step(times = 30L)
 set.seed(1L)
 state_lb <- ripr_init(Q_plur, plurality, record_gap = TRUE) |>
   lb_step(times = 30L, record_gap = TRUE)
@@ -105,45 +105,38 @@ state_lb <- ripr_init(Q_plur, plurality, record_gap = TRUE) |>
 #| include: false
 #| cache: true
 #| dependson: ["setup", "plurality-null"]
-# Every Frank--Wolfe variant on the same problem and seed: four direction
-# sets (whichever of the allowed directions reaches the lowest KL is taken)
-# crossed with three step-size rules. "Fully corrective" is a line search
-# followed by weight steps to convergence over the current support, with the
-# gap swept once at the end of the correction rather than on every cheap
-# weight row.
-fw_directions <- list(
-  "forward" = "forward",
-  "forward + pairwise" = c("forward", "pairwise"),
-  "forward + away" = c("forward", "away"),
-  "forward + pairwise + away" = c("forward", "pairwise", "away")
-)
+# Every Frank--Wolfe variant on the same problem and seed: the three the
+# literature names, crossed with three step-size rules. "Standard" only moves
+# toward the atom the oracle found; "away-step" may instead move away from the
+# worst atom it already carries, whichever the linear model prefers; "pairwise"
+# moves mass from that worst atom to the new one directly. "Fully corrective"
+# re-solves the weights over the current support after a line-search step,
+# which is what `correct = TRUE` does.
+fw_variant_names <- c("standard", "away-step", "pairwise")
 fw_sizes <- c("fixed", "line-search", "fully-corrective")
-fw_variant <- function(directions, size) {
+fw_variant <- function(variant, size) {
   set.seed(1L)
   state <- ripr_init(Q_plur, plurality, record_gap = TRUE)
   for (i in seq_len(30L)) {
     state <- if (size == "fully-corrective") {
-      state |>
-        fw_step(directions = directions, size = "line-search") |>
-        weight_step(times = 200L, until = support_gap_below(1e-8)) |>
-        weight_step(record_gap = TRUE)
+      fw_step(state, variant = variant, size = "line-search", correct = TRUE)
     } else {
-      fw_step(state, directions = directions, size = size, record_gap = TRUE)
+      fw_step(state, variant = variant, size = size)
     }
   }
   state
 }
 fw_grid <- expand.grid(
   size = fw_sizes,
-  directions = names(fw_directions),
+  variant = fw_variant_names,
   stringsAsFactors = FALSE
 )
 fw_variants <- Map(
-  function(d, s) fw_variant(fw_directions[[d]], s),
-  fw_grid$directions,
+  function(v, s) fw_variant(v, s),
+  fw_grid$variant,
   fw_grid$size
 )
-names(fw_variants) <- paste(fw_grid$directions, fw_grid$size, sep = " · ")
+names(fw_variants) <- paste(fw_grid$variant, fw_grid$size, sep = " · ")
 ```
 
 ```{r medial-null}
@@ -178,7 +171,7 @@ state_med <- ripr_init(
 )
 for (i in seq_len(30L)) {
   state_med <- state_med |>
-    fw_step(record_gap = TRUE) |>
+    fw_step() |>
     em_step(record_gap = TRUE)
 }
 fit_med <- ripr_finish(
@@ -243,7 +236,7 @@ state_cup <- ripr_init(
 )
 for (i in seq_len(20L)) {
   state_cup <- state_cup |>
-    fw_step(record_gap = TRUE) |>
+    fw_step() |>
     em_step(record_gap = TRUE)
 }
 fit_cup <- ripr_finish(
@@ -275,7 +268,7 @@ plur_compare <- ripr_compare_data(list(
 ))
 plur_variants <- ripr_compare_data(
   fw_variants,
-  colour_by = fw_grid$directions,
+  colour_by = fw_grid$variant,
   dash_by = fw_grid$size
 )
 
@@ -385,10 +378,11 @@ ripr_compare(plur_variants, height = 580)
 ```
 
 ::: {.caption}
-Twelve runs of the same problem and seed, thirty oracle steps each. Colour
-is the set of directions the step may take, line style the step size: the
-open-loop schedule, a line search, or a line search followed by weight
-steps to convergence over the current support. Hover a line to read it off.
+Nine runs of the same problem and seed, thirty oracle steps each. Colour is
+the Frank--Wolfe variant (standard, away-step, or pairwise) and line style
+the step size: the open-loop schedule, a line search, or a fully-corrective
+weights re-solve over the current support after every step. Hover a line
+to read it off.
 :::
 
 ## The medial-triangle problem {.slide}

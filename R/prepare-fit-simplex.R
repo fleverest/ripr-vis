@@ -5,16 +5,18 @@
 #' \eqn{Q(y)/P_i(y)}, so that vector is all the widget needs to draw the field
 #' at step \eqn{i}. This helper walks the fit's snapshots, computes the ratio
 #' vector and support of every recorded iterate, and lines each up with the
-#' `kl`/`gap` diagnostics on the matching trace row.
+#' `kl`/`gap_after` diagnostics on the matching trace row.
 #'
 #' The fit must have been run with `ripr::ripr_control(snapshot = "all")` (or
-#' `"step"`), and `record_gap = TRUE` on the steps whose gap should appear.
+#' `"step"`). `fw_step()` fills the gap columns from its own oracle; the
+#' other verbs need `record_gap = TRUE` for their gap to appear.
 #'
 #' @param state A `ripr` fit state (the result of `ripr::ripr_init()` advanced
 #'   by `ripr::fw_step()`/`ripr::em_step()`), **or** a plain list with
 #'   elements `trace` (a data frame with columns `fw`, `lb`, `em`, `weight`,
-#'   `phase`, `kl`, `gap` and a `gap_theta` list column) and `snapshots` (a
-#'   list of `list(iters, phase, atoms, weights)` as `ripr` records them).
+#'   `phase`, `kl`, `gap_after` and a `gap_after_theta` list column) and
+#'   `snapshots` (a list of `list(iters, phase, atoms, weights)` as `ripr`
+#'   records them).
 #' @param lattice The lattice payload from [ripr_lattice_data()].
 #' @param q,weights The alternative, as in [ripr_problem_simplex_data()]: a
 #'   categories-by-atoms matrix (or vector) and mixture weights over its

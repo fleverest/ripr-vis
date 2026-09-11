@@ -20,7 +20,7 @@ test_that("compare payload lines runs up by step and accumulates the clock", {
 })
 
 test_that("compare payload numbers a trace without counters by row", {
-  tr <- tiny_state()$trace[, c("phase", "kl", "gap")]
+  tr <- tiny_state()$trace[, c("phase", "kl", "gap_after")]
   expect_equal(as.integer(ripr_compare_data(tr)$runs[[1]]$step), c(1L, 2L))
   tr$phase[1] <- "init"
   expect_equal(as.integer(ripr_compare_data(tr)$runs[[1]]$step), c(0L, 1L))
@@ -64,7 +64,7 @@ test_that("compare payload defaults and validates labels", {
   expect_error(ripr_compare_data(list(list(kl = 1))), "carry one")
   expect_error(
     ripr_compare_data(list(data.frame(kl = 1))),
-    "`phase`, `kl` and `gap`"
+    "`phase`, `kl` and `gap_after`"
   )
   expect_warning(
     ripr_compare_data(rep(list(tiny_state()), 6L)),

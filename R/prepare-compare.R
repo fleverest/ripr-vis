@@ -44,7 +44,7 @@
 #' \dontrun{
 #' set.seed(1L)
 #' fw <- ripr::ripr_init(Q, null, record_gap = TRUE) |>
-#'   ripr::fw_step(times = 20L, record_gap = TRUE)
+#'   ripr::fw_step(times = 20L)
 #' set.seed(1L)
 #' lb <- ripr::ripr_init(Q, null, record_gap = TRUE) |>
 #'   ripr::lb_step(times = 20L, record_gap = TRUE)
@@ -81,8 +81,9 @@ ripr_compare_data <- function(runs, labels = NULL, colour_by = NULL,
   out <- Map(function(run, label, i) {
     trace <- run_trace(run)
     stop_unless(
-      is.data.frame(trace) && all(c("phase", "kl", "gap") %in% names(trace)),
-      "each run needs a trace with `phase`, `kl` and `gap` columns"
+      is.data.frame(trace) &&
+        all(c("phase", "kl", "gap_after") %in% names(trace)),
+      "each run needs a trace with `phase`, `kl` and `gap_after` columns"
     )
     n <- nrow(trace)
     stop_unless(n > 0L, "a run has an empty trace")
@@ -102,7 +103,7 @@ ripr_compare_data <- function(runs, labels = NULL, colour_by = NULL,
       step = I(step),
       phase = I(phase),
       kl = I(as.numeric(trace$kl)),
-      gap = I(as.numeric(trace$gap)),
+      gap = I(as.numeric(trace$gap_after)),
       time = I(time),
       colour = if (is.null(colour)) i else colour$index[i],
       dash = if (is.null(dash)) 1L else dash$index[i]

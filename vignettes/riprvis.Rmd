@@ -74,7 +74,7 @@ state <- ripr_init(
 )
 for (i in seq_len(15L)) {
   state <- state |>
-    fw_step(record_gap = TRUE) |>
+    fw_step() |>
     em_step(record_gap = TRUE)
 }
 
@@ -199,7 +199,7 @@ state2d <- ripr_init(
 )
 for (i in seq_len(10L)) {
   state2d <- state2d |>
-    fw_step(record_gap = TRUE) |>
+    fw_step() |>
     em_step(record_gap = TRUE)
 }
 

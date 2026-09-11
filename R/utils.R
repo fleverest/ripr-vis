@@ -69,8 +69,9 @@ stop_unless <- function(ok, ...) {
 
 # A snapshot records the iteration counters it was taken at; the trace row
 # with the same counters holds the diagnostics for the mixture that snapshot
-# describes. `gap` and `gap_theta` describe the mixture the row *produced*,
-# for every verb, so both line up with the snapshot on the same row.
+# describes. The `gap_after*` columns describe the mixture the row
+# *produced*, for every verb, so both line up with the snapshot on the same
+# row.
 snapshot_rows <- function(trace, snapshots) {
   key <- function(v) paste(v[c("fw", "lb", "em", "weight")], collapse = "/")
   row <- match(
@@ -94,11 +95,11 @@ fit_diagnostics <- function(trace, snapshots, row) {
       )
     }),
     kl = I(trace$kl[row]),
-    gap = I(trace$gap[row]),
+    gap = I(trace$gap_after[row]),
     # list column, and NA on any row that did not sweep. Scalar NA rather than
     # NULL: with na = "null" it serialises to a JSON null the JS side can
     # test, where a NULL list entry would serialise as a truthy empty object.
-    gap_theta = lapply(trace$gap_theta[row], function(v) {
+    gap_theta = lapply(trace$gap_after_theta[row], function(v) {
       if (all(is.na(v))) NA else as.vector(v)
     }),
     phase = I(trace$phase[row])

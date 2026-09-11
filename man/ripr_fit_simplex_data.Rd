@@ -10,8 +10,9 @@ ripr_fit_simplex_data(state, lattice, q = NULL, weights = NULL, q_pmf = NULL)
 \item{state}{A \code{ripr} fit state (the result of \code{ripr::ripr_init()} advanced
 by \code{ripr::fw_step()}/\code{ripr::em_step()}), \strong{or} a plain list with
 elements \code{trace} (a data frame with columns \code{fw}, \code{lb}, \code{em}, \code{weight},
-\code{phase}, \code{kl}, \code{gap} and a \code{gap_theta} list column) and \code{snapshots} (a
-list of \code{list(iters, phase, atoms, weights)} as \code{ripr} records them).}
+\code{phase}, \code{kl}, \code{gap_after} and a \code{gap_after_theta} list column) and
+\code{snapshots} (a list of \code{list(iters, phase, atoms, weights)} as \code{ripr}
+records them).}
 
 \item{lattice}{The lattice payload from \code{\link[=ripr_lattice_data]{ripr_lattice_data()}}.}
 
@@ -32,9 +33,10 @@ Bernstein coefficients on the simplex are exactly the pointwise ratios
 \eqn{Q(y)/P_i(y)}, so that vector is all the widget needs to draw the field
 at step \eqn{i}. This helper walks the fit's snapshots, computes the ratio
 vector and support of every recorded iterate, and lines each up with the
-\code{kl}/\code{gap} diagnostics on the matching trace row.
+\code{kl}/\code{gap_after} diagnostics on the matching trace row.
 }
 \details{
 The fit must have been run with \code{ripr::ripr_control(snapshot = "all")} (or
-\code{"step"}), and \code{record_gap = TRUE} on the steps whose gap should appear.
+\code{"step"}). \code{fw_step()} fills the gap columns from its own oracle; the
+other verbs need \code{record_gap = TRUE} for their gap to appear.
 }

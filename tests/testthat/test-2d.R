@@ -35,8 +35,8 @@ plane_state <- function() {
       weight = c(0L, 0L),
       phase = c("fw", "em"),
       kl = c(0.3, 0.2),
-      gap = c(0.1, NA),
-      gap_theta = I(list(c(1, 0), NA))
+      gap_after = c(0.1, NA),
+      gap_after_theta = I(list(c(1, 0), NA))
     ),
     snapshots = list(
       list(
@@ -178,9 +178,7 @@ test_that("fit2d builds from a real gaussian ripr state", {
     engine = ripr::gh_engine(8L),
     control = ripr::ripr_control(snapshot = "all")
   )
-  state <- ripr::em_step(ripr::fw_step(state, record_gap = TRUE),
-    record_gap = TRUE
-  )
+  state <- ripr::em_step(ripr::fw_step(state), record_gap = TRUE)
 
   pr <- ripr_problem2d_data(null, q = c(0, 0), title = "gauss")
   expect_equal(pr$seeds[[1]]$r[[1]], c(1, 0))

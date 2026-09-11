@@ -20,8 +20,8 @@ tiny_lattice <- function(n = 2L) {
 }
 
 # Two snapshots of a fit, with trace rows for a fw and an em step. The second
-# trace row records no gap sweep, so its gap is NA and gap_theta all-NA --
-# both must serialise as null, not the string "NA".
+# trace row records no gap sweep, so its gap_after is NA and its
+# gap_after_theta all-NA -- both must serialise as null, not the string "NA".
 tiny_state <- function() {
   list(
     trace = data.frame(
@@ -31,8 +31,8 @@ tiny_state <- function() {
       weight = c(0L, 0L),
       phase = c("fw", "em"),
       kl = c(0.5, 0.4),
-      gap = c(0.2, NA),
-      gap_theta = I(list(c(0.2, 0.5, 0.3), NA)),
+      gap_after = c(0.2, NA),
+      gap_after_theta = I(list(c(0.2, 0.5, 0.3), NA)),
       elapsed = c(0.25, 0.5)
     ),
     snapshots = list(

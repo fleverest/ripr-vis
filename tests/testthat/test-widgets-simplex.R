@@ -12,6 +12,53 @@ test_that("ripr_problem_simplex builds a widget whose payload survives", {
   expect_equal(x$labels$title, "tiny")
 })
 
+test_that("ripr_support_simplex steps frames of atoms over the problem", {
+  sup <- ripr_support_simplex_data(
+    list(
+      list(atoms = c(0.2, 0.5, 0.3)),
+      list(
+        atoms = cbind(c(0.2, 0.5, 0.3), c(0.1, 0.3, 0.6)),
+        weights = c(0.7, 0.3), kl = 0.1, gap = 1e-3
+      )
+    ),
+    labels = c("n = 1", "n = 2")
+  )
+  expect_equal(as.character(sup$labels), c("n = 1", "n = 2"))
+  # a lone atom takes all the weight; missing diagnostics are NA
+  expect_equal(as.numeric(sup$frames[[1]]$weights), 1)
+  expect_true(is.na(sup$frames[[1]]$kl))
+  w <- ripr_support_simplex(tiny_problem(), sup)
+  expect_s3_class(w, "htmlwidget")
+  x <- payload_of(w)
+  expect_length(x$seeds, 2L)
+  expect_length(x$support$frames, 2L)
+  # a single atom still crosses as an array of one point
+  expect_length(x$support$frames[[1]]$atoms, 1L)
+  expect_length(x$support$frames[[1]]$atoms[[1]], 3L)
+  expect_null(x$support$frames[[1]]$kl)
+  expect_equal(x$support$frames[[2]]$gap, 1e-3)
+  expect_equal(x$support$frames[[2]]$weights[[1]], 0.7)
+  # labels default by position, from names where there are any
+  expect_equal(
+    as.character(ripr_support_simplex_data(list(list(atoms = c(1, 0, 0))))$labels),
+    "frame 1"
+  )
+  expect_equal(
+    as.character(ripr_support_simplex_data(list(a = list(atoms = c(1, 0, 0))))$labels),
+    "a"
+  )
+  expect_error(
+    ripr_support_simplex_data(list(list(atoms = c(0.5, 0.5)))),
+    "three rows"
+  )
+  expect_error(
+    ripr_support_simplex_data(list(list(atoms = c(1, 0, 0), weights = c(1, 1)))),
+    "one entry per atom"
+  )
+  expect_error(ripr_support_simplex_data(list(), labels = "a"), "non-empty")
+  expect_error(ripr_support_simplex(tiny_problem(), list()), "payload from")
+})
+
 test_that("ripr_fit_simplex combines problem, fit and lattice payloads", {
   lat <- tiny_lattice(2L)
   fit <- ripr_fit_simplex_data(tiny_state(), lat, q = c(0.4, 0.34, 0.26))

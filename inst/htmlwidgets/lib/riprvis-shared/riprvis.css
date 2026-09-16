@@ -145,3 +145,83 @@
 .riprvis-readout .riprvis-hint { color: var(--riprvis-muted); }
 .riprvis-readout .riprvis-line { display: block; white-space: nowrap; }
 .riprvis-readout .riprvis-line + .riprvis-line { margin-top: 2px; }
+
+/* --- compare: toggles and ranges -------------------------------------- */
+/* Legend keys and run chips are toggles: click hides or shows what they
+   stand for, shift-click keeps only it. Off items stay legible but recede. */
+.riprvis-legend .riprvis-key,
+.riprvis-chips .riprvis-chip {
+  cursor: pointer;
+  user-select: none;
+  border-radius: 3px;
+  padding: 0 3px;
+}
+.riprvis-legend .riprvis-key:hover,
+.riprvis-chips .riprvis-chip:hover { background: #f1ede4; }
+.riprvis-legend .riprvis-key.off,
+.riprvis-chips .riprvis-chip.off {
+  opacity: 0.38;
+  text-decoration: line-through;
+}
+.riprvis-legend .riprvis-all,
+.riprvis-chips .riprvis-all {
+  cursor: pointer;
+  color: var(--riprvis-muted);
+  font-size: 11px;
+  margin-left: 4px;
+}
+.riprvis-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  align-items: center;
+  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    monospace;
+  font-size: 11px;
+  color: var(--riprvis-ink);
+  margin-bottom: 6px;
+}
+.riprvis-chips .riprvis-swatch { margin-right: 4px; }
+.riprvis-ranges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  align-items: center;
+  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    monospace;
+  font-size: 11px;
+  color: var(--riprvis-muted);
+  margin-top: 4px;
+}
+.riprvis-ranges .riprvis-range { white-space: nowrap; }
+.riprvis-ranges input[type="number"] {
+  width: 6em;
+  font: inherit;
+  font-size: 11px;
+  padding: 1px 3px;
+  margin: 0 2px;
+  color: var(--riprvis-ink);
+  border: 1px solid #d8d2c6;
+  border-radius: 3px;
+  background: #fdfcf9;
+}
+.riprvis-ranges button,
+.riprvis-legend button.riprvis-all,
+.riprvis-chips button.riprvis-all {
+  font: inherit;
+  font-size: 11px;
+  padding: 1px 6px;
+  border: 1px solid #d8d2c6;
+  border-radius: 3px;
+  background: #fdfcf9;
+  color: var(--riprvis-ink);
+  cursor: pointer;
+}
+.riprvis-ranges button:hover,
+.riprvis-legend button.riprvis-all:hover { background: #f1ede4; }
+.riprvis .riprvis-brush .selection {
+  fill: #2a6aa8;
+  fill-opacity: 0.08;
+  stroke: #2a6aa8;
+  stroke-opacity: 0.4;
+}

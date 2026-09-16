@@ -1,0 +1,10 @@
+dependencies:
+  - name: d3
+    version: 7.9.0
+    src: htmlwidgets/lib/d3
+    script: d3.min.js
+  - name: riprvis-shared
+    version: 0.1.0
+    src: htmlwidgets/lib/riprvis-shared
+    script: riprvis-shared.js
+    stylesheet: riprvis.css

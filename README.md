@@ -21,6 +21,9 @@ Quarto documents, and Shiny:
   Li–Barron, say) as overlaid KL / gap / growth traces, against the oracle
   step count or the clock time `ripr` records in the trace; two crossed
   factors can be told apart by colour and line style.
+- `ripr_support_simplex()` — one finite mixture per slider position on the
+  ternary simplex (the near-RIPr supports of a problem as the trial count
+  varies, say), the other frames' atoms left as ghosts.
 
 Planar analogues cover two-dimensional families such as
 `ripr::gaussian_family()` with polyhedral nulls, including unbounded parts
@@ -36,7 +39,8 @@ given by vertices plus recession rays:
 Each widget takes a plain-list payload, built either by hand or from real
 `ripr` objects with `ripr_problem_simplex_data()`, `ripr_lattice_data()`,
 `ripr_fit_simplex_data()`, `ripr_certify_simplex_data()`, `ripr_compare_data()`,
-`ripr_problem2d_data()` and `ripr_fit2d_data()`; only the data helpers touch
+`ripr_support_simplex_data()`, `ripr_problem2d_data()` and `ripr_fit2d_data()`;
+only the data helpers touch
 `ripr`, so saved payloads render without it.
 
 ```r

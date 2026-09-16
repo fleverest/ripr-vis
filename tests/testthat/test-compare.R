@@ -26,6 +26,22 @@ test_that("compare payload numbers a trace without counters by row", {
   expect_equal(as.integer(ripr_compare_data(tr)$runs[[1]]$step), c(0L, 1L))
 })
 
+test_that("compare payload counts sweeps for a run with no oracle step", {
+  em <- tiny_state()
+  em$trace$fw <- c(0L, 0L)
+  em$trace$em <- c(1L, 2L)
+  expect_equal(as.integer(ripr_compare_data(em)$runs[[1]]$step), c(1L, 2L))
+  # weight sweeps count too, and an init row is sweep 0
+  w <- tiny_state()
+  w$trace$fw <- c(0L, 0L)
+  w$trace$em <- c(0L, 0L)
+  w$trace$weight <- c(0L, 3L)
+  w$trace$phase <- c("init", "weight")
+  expect_equal(as.integer(ripr_compare_data(w)$runs[[1]]$step), c(0L, 3L))
+  # but one oracle step anywhere keeps the oracle count
+  expect_equal(as.integer(ripr_compare_data(tiny_state())$runs[[1]]$step), c(1L, 1L))
+})
+
 test_that("compare payload groups runs by colour and dash", {
   runs <- rep(list(tiny_state()), 6L)
   cmp <- ripr_compare_data(
@@ -42,6 +58,34 @@ test_that("compare payload groups runs by colour and dash", {
   )
   # two colour levels over six runs is not too many colours
   expect_no_warning(ripr_compare_data(runs, colour_by = rep(c("a", "b"), 3L)))
+})
+
+test_that("compare payload names a line pattern per dash level", {
+  runs <- rep(list(tiny_state()), 4L)
+  by <- factor(rep(c("ls", "fc"), 2L), levels = c("ls", "fc"))
+  cmp <- ripr_compare_data(runs, dash_by = by, dashes = c("dashed", "solid"))
+  expect_equal(as.character(cmp$legend$dashes), c("dashed", "solid"))
+  # named patterns follow the levels; names for absent levels drop
+  cmp <- ripr_compare_data(
+    runs,
+    dash_by = by,
+    dashes = c(fc = "solid", ls = "dashed", fixed = "dotted")
+  )
+  expect_equal(as.character(cmp$legend$dashes), c("dashed", "solid"))
+  expect_null(ripr_compare_data(runs, dash_by = by)$legend$dashes)
+  expect_error(ripr_compare_data(runs, dashes = "solid"), "needs `dash_by`")
+  expect_error(
+    ripr_compare_data(runs, dash_by = by, dashes = "solid"),
+    "one pattern per"
+  )
+  expect_error(
+    ripr_compare_data(runs, dash_by = by, dashes = c(fc = "solid")),
+    "`ls`"
+  )
+  expect_error(
+    ripr_compare_data(runs, dash_by = by, dashes = c("dashed", "wavy")),
+    "`wavy`"
+  )
 })
 
 test_that("compare payload accepts a bare trace or a finish()-style list", {

@@ -11,7 +11,10 @@
 #' `fw + lb` from the trace, so the initial state is step 0 and the rows an
 #' EM or weight sweep adds between two oracle steps share the step of the
 #' one they refine: a fully-corrective run's many cheap weight rows do not
-#' inflate its step count. A trace without those columns is numbered by
+#' inflate its step count. A run that takes no oracle step at all -- pure EM
+#' from a fixed support, say -- would otherwise sit at step 0 throughout, so
+#' its sweeps, `em + weight`, are counted instead. A trace without those
+#' columns is numbered by
 #' row. The clock time of a row is the cumulative `elapsed` up to it --
 #' `ripr` records the wall-clock seconds each row cost, the init row
 #' included -- so a run's time axis is `cumsum(trace$elapsed)`. A trace
@@ -22,8 +25,9 @@
 #' apart by two encodings: `colour_by` colours the runs by one factor and
 #' `dash_by` patterns the lines by the other, and the legend then lists the
 #' levels of each rather than every run. Dash levels take, in order, a
-#' dotted, a dashed, a solid and a dash-dot line; put the rule the eye
-#' should rest on third.
+#' dotted, a dashed, a solid and a dash-dot line, so put the rule the eye
+#' should rest on third; or name each level's pattern with `dashes` and
+#' order the levels as the legend should read.
 #'
 #' @param runs A list of fits, each a `ripr` fit state, a plain list with a
 #'   `trace` element (such as the result of `ripr::ripr_finish()`), or a
@@ -35,11 +39,15 @@
 #'   in the order of `runs`) giving the level each run is coloured, or
 #'   dashed, by. Levels are taken in order of first appearance, or a
 #'   factor's own level order. At most five colour levels are told apart.
+#' @param dashes Optional line pattern per dash level, each `"dotted"`,
+#'   `"dashed"`, `"solid"` or `"dash-dot"`: one per level in level order,
+#'   or named by level, in which case names for levels not present are
+#'   ignored. Default the positional order above.
 #' @return A list with elements `runs` (one entry per run, each with `label`,
 #'   `step`, `phase`, `kl`, `gap`, `time` vectors and `colour`/`dash` level
-#'   indices), `legend` (the level names behind those indices, or `NULL`
-#'   where the runs are not grouped) and `has_time`, shaped for
-#'   [ripr_compare()].
+#'   indices), `legend` (the level names behind those indices and, when
+#'   given, the `dashes` patterns, or `NULL` where the runs are not grouped)
+#'   and `has_time`, shaped for [ripr_compare()].
 #' @examples
 #' \dontrun{
 #' set.seed(1L)
@@ -52,7 +60,7 @@
 #' }
 #' @export
 ripr_compare_data <- function(runs, labels = NULL, colour_by = NULL,
-                              dash_by = NULL) {
+                              dash_by = NULL, dashes = NULL) {
   stop_unless(is.list(runs) && length(runs) > 0, "`runs` must be a list of fits")
   if (is.data.frame(runs) || !is.null(run_trace_or_null(runs))) {
     runs <- list(runs)
@@ -69,6 +77,7 @@ ripr_compare_data <- function(runs, labels = NULL, colour_by = NULL,
   )
   colour <- run_levels(colour_by, length(runs), "colour_by")
   dash <- run_levels(dash_by, length(runs), "dash_by")
+  patterns <- dash_patterns(dashes, dash)
   n_colours <- if (is.null(colour)) length(runs) else length(colour$levels)
   if (n_colours > 5L) {
     warning(
@@ -93,8 +102,14 @@ ripr_compare_data <- function(runs, labels = NULL, colour_by = NULL,
       rep(NA_real_, n)
     }
     phase <- as.character(trace$phase)
-    step <- if (all(c("fw", "lb") %in% names(trace))) {
-      as.integer(trace$fw) + as.integer(trace$lb)
+    counters <- c("fw", "lb", "em", "weight")
+    step <- if (all(counters %in% names(trace))) {
+      oracle <- as.integer(trace$fw) + as.integer(trace$lb)
+      if (any(oracle > 0L)) {
+        oracle
+      } else {
+        as.integer(trace$em) + as.integer(trace$weight)
+      }
     } else {
       seq_len(n) - as.integer(identical(phase[1L], "init"))
     }
@@ -116,6 +131,7 @@ ripr_compare_data <- function(runs, labels = NULL, colour_by = NULL,
   legend <- list()
   if (!is.null(colour)) legend$colour <- I(colour$levels)
   if (!is.null(dash)) legend$dash <- I(dash$levels)
+  if (!is.null(patterns)) legend$dashes <- I(patterns)
   list(
     runs = out,
     legend = legend,
@@ -130,6 +146,36 @@ run_levels <- function(by, n, what) {
   stop_unless(length(by) == n, "`", what, "` must have one entry per run")
   f <- if (is.factor(by)) droplevels(by) else factor(by, levels = unique(by))
   list(levels = as.character(levels(f)), index = as.integer(f))
+}
+
+# The line pattern of each dash level, in level order, or NULL for the
+# positional default. Named patterns are matched to the levels, so a caller
+# can name every rule it knows of and let absent ones drop.
+dash_patterns <- function(dashes, dash) {
+  if (is.null(dashes)) return(NULL)
+  stop_unless(!is.null(dash), "`dashes` needs `dash_by`")
+  stop_unless(is.character(dashes), "`dashes` must be a character vector")
+  if (!is.null(names(dashes))) {
+    unnamed <- setdiff(dash$levels, names(dashes))
+    stop_unless(
+      !length(unnamed),
+      "`dashes` names no pattern for dash level ",
+      paste0("`", unnamed, "`", collapse = ", ")
+    )
+    dashes <- unname(dashes[dash$levels])
+  }
+  stop_unless(
+    length(dashes) == length(dash$levels),
+    "`dashes` must give one pattern per dash level"
+  )
+  known <- c("dotted", "dashed", "solid", "dash-dot")
+  unknown <- setdiff(dashes, known)
+  stop_unless(
+    !length(unknown),
+    "unknown dash pattern ", paste0("`", unknown, "`", collapse = ", "),
+    "; use one of ", paste0("`", known, "`", collapse = ", ")
+  )
+  dashes
 }
 
 # A run's trace: the object itself when it is one, else its `trace` field.

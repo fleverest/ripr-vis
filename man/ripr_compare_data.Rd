@@ -4,7 +4,13 @@
 \alias{ripr_compare_data}
 \title{Comparison payload: the diagnostics of several fits, side by side}
 \usage{
-ripr_compare_data(runs, labels = NULL, colour_by = NULL, dash_by = NULL)
+ripr_compare_data(
+  runs,
+  labels = NULL,
+  colour_by = NULL,
+  dash_by = NULL,
+  dashes = NULL
+)
 }
 \arguments{
 \item{runs}{A list of fits, each a \code{ripr} fit state, a plain list with a
@@ -19,13 +25,18 @@ view, \code{elapsed}. Names, if any, label the runs.}
 in the order of \code{runs}) giving the level each run is coloured, or
 dashed, by. Levels are taken in order of first appearance, or a
 factor's own level order. At most five colour levels are told apart.}
+
+\item{dashes}{Optional line pattern per dash level, each \code{"dotted"},
+\code{"dashed"}, \code{"solid"} or \code{"dash-dot"}: one per level in level order,
+or named by level, in which case names for levels not present are
+ignored. Default the positional order above.}
 }
 \value{
 A list with elements \code{runs} (one entry per run, each with \code{label},
 \code{step}, \code{phase}, \code{kl}, \code{gap}, \code{time} vectors and \code{colour}/\code{dash} level
-indices), \code{legend} (the level names behind those indices, or \code{NULL}
-where the runs are not grouped) and \code{has_time}, shaped for
-\code{\link[=ripr_compare]{ripr_compare()}}.
+indices), \code{legend} (the level names behind those indices and, when
+given, the \code{dashes} patterns, or \code{NULL} where the runs are not grouped)
+and \code{has_time}, shaped for \code{\link[=ripr_compare]{ripr_compare()}}.
 }
 \description{
 Lines up the KL, gap and guaranteed growth traces of several fits of
@@ -40,7 +51,10 @@ Each run's rows are its trace rows in order. \code{step} counts oracle steps,
 \code{fw + lb} from the trace, so the initial state is step 0 and the rows an
 EM or weight sweep adds between two oracle steps share the step of the
 one they refine: a fully-corrective run's many cheap weight rows do not
-inflate its step count. A trace without those columns is numbered by
+inflate its step count. A run that takes no oracle step at all -- pure EM
+from a fixed support, say -- would otherwise sit at step 0 throughout, so
+its sweeps, \code{em + weight}, are counted instead. A trace without those
+columns is numbered by
 row. The clock time of a row is the cumulative \code{elapsed} up to it --
 \code{ripr} records the wall-clock seconds each row cost, the init row
 included -- so a run's time axis is \code{cumsum(trace$elapsed)}. A trace
@@ -51,8 +65,9 @@ four direction sets by three step-size rules, say -- are better told
 apart by two encodings: \code{colour_by} colours the runs by one factor and
 \code{dash_by} patterns the lines by the other, and the legend then lists the
 levels of each rather than every run. Dash levels take, in order, a
-dotted, a dashed, a solid and a dash-dot line; put the rule the eye
-should rest on third.
+dotted, a dashed, a solid and a dash-dot line, so put the rule the eye
+should rest on third; or name each level's pattern with \code{dashes} and
+order the levels as the legend should read.
 }
 \examples{
 \dontrun{

@@ -14,13 +14,13 @@ ripr_problem_simplex_data(
 }
 \arguments{
 \item{null}{A \code{ripr::null_model()}, a list of \code{ripr} convex regions, \strong{or}
-a plain list of vertex matrices (one per part, categories by vertices --
-each column a point of the simplex).}
+a plain list of vertex matrices (one per part, vertices by categories --
+each row a point of the simplex, as \code{ripr} stores them).}
 
-\item{q}{The alternative's support: a categories-by-atoms matrix (or a
-single vector) of points of the simplex.}
+\item{q}{The alternative's support: an atoms-by-categories matrix (or a
+single vector) of points of the simplex, one per row.}
 
-\item{weights}{Mixture weights over the columns of \code{q}; equal by default.}
+\item{weights}{Mixture weights over the rows of \code{q}; equal by default.}
 
 \item{title}{Short name for the example, used to namespace SVG defs when
 several widgets share a page.}
@@ -40,7 +40,7 @@ All three simplex widgets (\code{\link[=ripr_problem_simplex]{ripr_problem_simpl
 }
 \examples{
 ripr_problem_simplex_data(
-  null = list(cbind(c(.5, .5, 0), c(0, 1, 0), c(0, 0, 1))),
+  null = list(rbind(c(.5, .5, 0), c(0, 1, 0), c(0, 0, 1))),
   q = c(0.4, 0.34, 0.26),
   part_labels = "example part"
 )

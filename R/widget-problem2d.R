@@ -13,8 +13,8 @@
 #' @examples
 #' ripr_problem2d(ripr_problem2d_data(
 #'   null = list(list(
-#'     v = cbind(c(1, 0), c(2, 0.5), c(2, -0.5)),
-#'     r = cbind(c(1, 0))
+#'     v = rbind(c(1, 0), c(2, 0.5), c(2, -0.5)),
+#'     r = rbind(c(1, 0))
 #'   )),
 #'   q = c(0, 0)
 #' ))

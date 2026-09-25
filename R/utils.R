@@ -3,11 +3,17 @@
 # list (an element), so every prepare_*() function accepts either the real
 # `ripr` object or an equivalently shaped stand-in.
 
-# Split a matrix into a list of its columns; the JSON side wants points as
-# arrays of coordinates, and jsonlite serialises a matrix row-major otherwise.
-cols <- function(m) {
-  m <- as.matrix(m)
-  lapply(seq_len(ncol(m)), function(i) m[, i])
+# Points as a matrix with one point per row, as `ripr` stores them; a bare
+# vector is a single point.
+as_points <- function(x) {
+  if (is.null(dim(x))) matrix(x, nrow = 1L) else as.matrix(x)
+}
+
+# Split a matrix of points (one per row) into a list of points; the JSON side
+# wants points as arrays of coordinates.
+rows <- function(m) {
+  m <- as_points(m)
+  lapply(seq_len(nrow(m)), function(i) as.vector(m[i, ]))
 }
 
 # A property on an S7 object, an attribute on a data frame, or an element of a
@@ -67,16 +73,14 @@ stop_unless <- function(ok, ...) {
   if (!isTRUE(ok)) stop(..., call. = FALSE)
 }
 
-# A snapshot records the iteration counters it was taken at; the trace row
-# with the same counters holds the diagnostics for the mixture that snapshot
-# describes. The `gap_after*` columns describe the mixture the row
-# *produced*, for every verb, so both line up with the snapshot on the same
-# row.
+# A snapshot records the trace step it was taken at; the trace row with that
+# step holds the diagnostics for the mixture the snapshot describes. The
+# `gap_after*` columns describe the mixture the row *produced*, for every
+# verb, so both line up with the snapshot on the same row.
 snapshot_rows <- function(trace, snapshots) {
-  key <- function(v) paste(v[c("fw", "lb", "em", "weight")], collapse = "/")
   row <- match(
-    vapply(snapshots, function(s) key(s$iters), ""),
-    apply(trace[, c("fw", "lb", "em", "weight")], 1L, key)
+    vapply(snapshots, function(s) as.integer(s$step), 0L),
+    as.integer(trace$step)
   )
   stop_unless(
     !anyNA(row),
@@ -90,8 +94,8 @@ fit_diagnostics <- function(trace, snapshots, row) {
   list(
     support = lapply(snapshots, function(s) {
       list(
-        atoms = cols(do.call(cbind, s$atoms)),
-        weights = I(unlist(s$weights))
+        atoms = rows(s$atoms),
+        weights = I(as.numeric(s$weights))
       )
     }),
     kl = I(trace$kl[row]),

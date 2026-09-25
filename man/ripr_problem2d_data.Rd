@@ -15,14 +15,14 @@ ripr_problem2d_data(
 }
 \arguments{
 \item{null}{A \code{ripr::null_model()}, a list of \code{ripr} convex regions, \strong{or}
-a plain list with one element per part, each either a \verb{(2, nv)} vertex
-matrix or a \verb{list(v = <2 x nv matrix>, r = <2 x nr matrix or NULL>, l = <2 x nl matrix or NULL>)} of vertices, rays and lineality
-directions.}
+a plain list with one element per part, each either an \verb{(nv, 2)} vertex
+matrix or a \verb{list(v = <nv x 2 matrix>, r = <nr x 2 matrix or NULL>, l = <nl x 2 matrix or NULL>)} of vertices, rays and lineality
+directions, one per row as \code{ripr} stores them.}
 
-\item{q}{The alternative's support: a \verb{(2, J)} matrix (or a single length-2
-vector) of parameter points.}
+\item{q}{The alternative's support: a \verb{(J, 2)} matrix (or a single length-2
+vector) of parameter points, one per row.}
 
-\item{weights}{Mixture weights over the columns of \code{q}; equal by default.}
+\item{weights}{Mixture weights over the rows of \code{q}; equal by default.}
 
 \item{title}{Short name for the example, used to namespace SVG defs.}
 
@@ -54,8 +54,8 @@ the view however far the null extends.
 \examples{
 ripr_problem2d_data(
   null = list(list(
-    v = cbind(c(1, 0), c(2, 0.5), c(2, -0.5)),
-    r = cbind(c(1, 0))
+    v = rbind(c(1, 0), c(2, 0.5), c(2, -0.5)),
+    r = rbind(c(1, 0))
   )),
   q = c(0, 0)
 )

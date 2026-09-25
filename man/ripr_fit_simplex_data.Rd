@@ -9,16 +9,16 @@ ripr_fit_simplex_data(state, lattice, q = NULL, weights = NULL, q_pmf = NULL)
 \arguments{
 \item{state}{A \code{ripr} fit state (the result of \code{ripr::ripr_init()} advanced
 by \code{ripr::fw_step()}/\code{ripr::em_step()}), \strong{or} a plain list with
-elements \code{trace} (a data frame with columns \code{fw}, \code{lb}, \code{em}, \code{weight},
-\code{phase}, \code{kl}, \code{gap_after} and a \code{gap_after_theta} list column) and
-\code{snapshots} (a list of \code{list(iters, phase, atoms, weights)} as \code{ripr}
-records them).}
+elements \code{trace} (a data frame with columns \code{step}, \code{phase}, \code{kl},
+\code{gap_after} and a \code{gap_after_theta} list column) and \code{snapshots} (a list
+of \code{list(step, phase, atoms, weights)} as \code{ripr} records them, \code{atoms}
+holding one atom per row).}
 
 \item{lattice}{The lattice payload from \code{\link[=ripr_lattice_data]{ripr_lattice_data()}}.}
 
-\item{q, weights}{The alternative, as in \code{\link[=ripr_problem_simplex_data]{ripr_problem_simplex_data()}}: a
-categories-by-atoms matrix (or vector) and mixture weights over its
-columns. Used to evaluate \code{Q}'s pmf over the lattice. Alternatively pass
+\item{q, weights}{The alternative, as in \code{\link[=ripr_problem_simplex_data]{ripr_problem_simplex_data()}}: an
+atoms-by-categories matrix (or vector) and mixture weights over its
+rows. Used to evaluate \code{Q}'s pmf over the lattice. Alternatively pass
 \code{q_pmf} directly and leave these \code{NULL}.}
 
 \item{q_pmf}{\code{Q}'s pmf over the lattice outcomes, if already computed.}

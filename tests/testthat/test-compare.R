@@ -19,10 +19,10 @@ test_that("compare payload lines runs up by step and accumulates the clock", {
   expect_false(ripr_compare_data(list(untimed))$has_time)
 })
 
-test_that("compare payload numbers a trace without counters by row", {
+test_that("compare payload counts oracle steps from the phase alone", {
   tr <- tiny_state()$trace[, c("phase", "kl", "gap_after")]
-  expect_equal(as.integer(ripr_compare_data(tr)$runs[[1]]$step), c(1L, 2L))
-  tr$phase[1] <- "init"
+  expect_equal(as.integer(ripr_compare_data(tr)$runs[[1]]$step), c(1L, 1L))
+  tr$phase <- c("init", "lb")
   expect_equal(as.integer(ripr_compare_data(tr)$runs[[1]]$step), c(0L, 1L))
 })
 

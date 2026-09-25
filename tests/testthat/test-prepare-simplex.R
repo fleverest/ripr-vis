@@ -24,16 +24,16 @@ test_that("lattice pmf sums to one and matches dmultinom", {
     apply(y, 1L, function(row) dmultinom(row, prob = theta))
   )
   # a mixture pmf is the weighted sum of its components'
-  atoms <- cbind(c(0.2, 0.5, 0.3), c(0.6, 0.2, 0.2))
+  atoms <- rbind(c(0.2, 0.5, 0.3), c(0.6, 0.2, 0.2))
   pm <- riprvis:::lattice_mixture_pmf(lat, atoms, c(0.25, 0.75))
   expect_equal(
     pm,
-    0.25 * riprvis:::lattice_pmf(lat, atoms[, 1]) +
-      0.75 * riprvis:::lattice_pmf(lat, atoms[, 2])
+    0.25 * riprvis:::lattice_pmf(lat, atoms[1, ]) +
+      0.75 * riprvis:::lattice_pmf(lat, atoms[2, ])
   )
 })
 
-test_that("problem payload splits vertices into columns and defaults labels", {
+test_that("problem payload splits vertices into points and defaults labels", {
   pr <- tiny_problem()
   expect_length(pr$seeds, 2L)
   expect_equal(pr$seeds[[1]][[1]], c(0.5, 0.5, 0))
@@ -42,7 +42,7 @@ test_that("problem payload splits vertices into columns and defaults labels", {
 
   defaulted <- ripr_problem_simplex_data(
     null = list(diag(3)),
-    q = cbind(c(0.6, 0.2, 0.2), c(0.2, 0.6, 0.2))
+    q = rbind(c(0.6, 0.2, 0.2), c(0.2, 0.6, 0.2))
   )
   expect_equal(as.character(defaulted$labels$parts), "part 1")
   expect_equal(as.numeric(defaulted$marks$weights), c(0.5, 0.5))
@@ -51,7 +51,7 @@ test_that("problem payload splits vertices into columns and defaults labels", {
 test_that("problem payload validates weights and labels lengths", {
   expect_error(
     ripr_problem_simplex_data(list(diag(3)), q = diag(3), weights = 1),
-    "one entry per column"
+    "one entry per row"
   )
   expect_error(
     ripr_problem_simplex_data(

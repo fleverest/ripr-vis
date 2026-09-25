@@ -11,7 +11,7 @@ test_that("payloads build from real ripr objects", {
     family,
     lapply(2:3, function(j) {
       vertices <- diag(3)
-      vertices[, 1L] <- replace(numeric(3), c(1L, j), 0.5)
+      vertices[1L, ] <- replace(numeric(3), c(1L, j), 0.5)
       ripr::simplex_region(vertices = vertices)
     })
   )
@@ -46,7 +46,7 @@ test_that("payloads build from real ripr objects", {
     reoptimise = TRUE, identify = TRUE, record_gap = TRUE
   )
   x <- ripr::likelihood(family(q), label = "Q") /
-    ripr::likelihood(finished$P_star, label = "P*")
+    ripr::likelihood(finished@P_star, label = "P*")
   nodes <- ripr::certify_trace(x, null, tol = 1e-6)
 
   cert <- ripr_certify_simplex_data(nodes, tol = 1e-6)
@@ -70,7 +70,7 @@ test_that("ripr runs compare against each other on the trace's own clock", {
   null <- ripr::null_model(
     family,
     list(ripr::simplex_region(
-      vertices = cbind(c(0.5, 0.5, 0), c(0, 1, 0), c(0, 0, 1))
+      vertices = rbind(c(0.5, 0.5, 0), c(0, 1, 0), c(0, 0, 1))
     ))
   )
   q <- c(0.40, 0.34, 0.26)
@@ -103,4 +103,9 @@ test_that("ripr runs compare against each other on the trace's own clock", {
   expect_equal(as.character(fit$phase)[1], "init")
   expect_length(fit$ratio, nrow(fw@trace))
   expect_true(is.finite(fit$gap[1]))
+
+  # a finished fit compares on the trace of the state it was finished from
+  finished <- ripr::ripr_finish(fw)
+  cmp_fit <- ripr_compare_data(list(finished))
+  expect_equal(as.numeric(cmp_fit$runs[[1]]$kl), fw@trace$kl)
 })

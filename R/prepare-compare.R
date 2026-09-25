@@ -8,11 +8,10 @@
 #' in sight) can be compared.
 #'
 #' Each run's rows are its trace rows in order. `step` counts oracle steps,
-#' `fw + lb` from the trace, so the initial state is step 0 and the rows an
-#' EM or weight sweep adds between two oracle steps share the step of the
-#' one they refine: a fully-corrective run's many cheap weight rows do not
-#' inflate its step count. A trace without those columns is numbered by
-#' row. The clock time of a row is the cumulative `elapsed` up to it --
+#' the `fw` and `lb` rows so far by the trace's `phase`, so the initial state
+#' is step 0 and the rows an EM or weight sweep adds between two oracle steps
+#' share the step of the one they refine: a fully-corrective run's many cheap
+#' weight rows do not inflate its step count. The clock time of a row is the cumulative `elapsed` up to it --
 #' `ripr` records the wall-clock seconds each row cost, the init row
 #' included -- so a run's time axis is `cumsum(trace$elapsed)`. A trace
 #' without an `elapsed` column has no time and is left out of the time view.
@@ -25,9 +24,9 @@
 #' dotted, a dashed, a solid and a dash-dot line; put the rule the eye
 #' should rest on third.
 #'
-#' @param runs A list of fits, each a `ripr` fit state, a plain list with a
-#'   `trace` element (such as the result of `ripr::ripr_finish()`), or a
-#'   trace data frame with columns `phase`, `kl` and `gap` and, for the time
+#' @param runs A list of fits, each a `ripr` fit state, a finished fit from
+#'   `ripr::ripr_finish()`, a plain list with a `trace` element, or a trace
+#'   data frame with columns `phase`, `kl` and `gap_after` and, for the time
 #'   view, `elapsed`. Names, if any, label the runs.
 #' @param labels Run labels; default the names of `runs`, else `run 1`,
 #'   `run 2`, ...
@@ -93,11 +92,7 @@ ripr_compare_data <- function(runs, labels = NULL, colour_by = NULL,
       rep(NA_real_, n)
     }
     phase <- as.character(trace$phase)
-    step <- if (all(c("fw", "lb") %in% names(trace))) {
-      as.integer(trace$fw) + as.integer(trace$lb)
-    } else {
-      seq_len(n) - as.integer(identical(phase[1L], "init"))
-    }
+    step <- cumsum(phase %in% c("fw", "lb"))
     list(
       label = label,
       step = I(step),
@@ -141,6 +136,10 @@ run_trace <- function(run) {
 
 run_trace_or_null <- function(run) {
   if (is.data.frame(run)) return(run)
+  # A finished fit carries its trace on the state it was finished from.
+  if (inherits(run, "S7_object") && "state" %in% S7::prop_names(run)) {
+    run <- S7::prop(run, "state")
+  }
   if (inherits(run, "S7_object") || is.list(run)) {
     return(tryCatch(field(run, "trace"), error = function(e) NULL))
   }

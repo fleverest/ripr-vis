@@ -6,11 +6,11 @@
 #' [ripr_certify_simplex()]) take this as their first argument.
 #'
 #' @param null A `ripr::null_model()`, a list of `ripr` convex regions, **or**
-#'   a plain list of vertex matrices (one per part, categories by vertices --
-#'   each column a point of the simplex).
-#' @param q The alternative's support: a categories-by-atoms matrix (or a
-#'   single vector) of points of the simplex.
-#' @param weights Mixture weights over the columns of `q`; equal by default.
+#'   a plain list of vertex matrices (one per part, vertices by categories --
+#'   each row a point of the simplex, as `ripr` stores them).
+#' @param q The alternative's support: an atoms-by-categories matrix (or a
+#'   single vector) of points of the simplex, one per row.
+#' @param weights Mixture weights over the rows of `q`; equal by default.
 #' @param title Short name for the example, used to namespace SVG defs when
 #'   several widgets share a page.
 #' @param part_labels Optional character vector labelling the parts of the
@@ -19,7 +19,7 @@
 #'   alternative's atoms and weights) and `labels`.
 #' @examples
 #' ripr_problem_simplex_data(
-#'   null = list(cbind(c(.5, .5, 0), c(0, 1, 0), c(0, 0, 1))),
+#'   null = list(rbind(c(.5, .5, 0), c(0, 1, 0), c(0, 0, 1))),
 #'   q = c(0.4, 0.34, 0.26),
 #'   part_labels = "example part"
 #' )
@@ -27,11 +27,11 @@
 ripr_problem_simplex_data <- function(null, q, weights = NULL, title = "ripr",
                               part_labels = NULL) {
   seeds <- part_vertices(null)
-  q <- as.matrix(q)
-  if (is.null(weights)) weights <- rep(1 / ncol(q), ncol(q))
+  q <- as_points(q)
+  if (is.null(weights)) weights <- rep(1 / nrow(q), nrow(q))
   stop_unless(
-    length(weights) == ncol(q),
-    "`weights` must have one entry per column of `q`"
+    length(weights) == nrow(q),
+    "`weights` must have one entry per row of `q`"
   )
   if (is.null(part_labels)) {
     part_labels <- paste("part", seq_along(seeds))
@@ -42,7 +42,7 @@ ripr_problem_simplex_data <- function(null, q, weights = NULL, title = "ripr",
   )
   list(
     seeds = seeds,
-    marks = list(q = cols(q), weights = I(as.numeric(weights))),
+    marks = list(q = rows(q), weights = I(as.numeric(weights))),
     labels = list(
       title = as.character(title),
       parts = I(as.character(part_labels))
@@ -50,8 +50,8 @@ ripr_problem_simplex_data <- function(null, q, weights = NULL, title = "ripr",
   )
 }
 
-# The parts of a null as a list of vertex-column lists, from a null_model, a
-# list of regions, or a list of plain matrices.
+# The parts of a null as a list of vertex lists, from a null_model, a list of
+# regions, or a list of plain matrices with one vertex per row.
 part_vertices <- function(null) {
   if (inherits(null, "S7_object")) {
     stop_unless(
@@ -66,6 +66,6 @@ part_vertices <- function(null) {
   )
   lapply(null, function(part) {
     v <- if (inherits(part, "S7_object")) field(part, "vertices") else part
-    cols(as.matrix(v))
+    rows(v)
   })
 }

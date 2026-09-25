@@ -7,9 +7,9 @@
 ripr_compare_data(runs, labels = NULL, colour_by = NULL, dash_by = NULL)
 }
 \arguments{
-\item{runs}{A list of fits, each a \code{ripr} fit state, a plain list with a
-\code{trace} element (such as the result of \code{ripr::ripr_finish()}), or a
-trace data frame with columns \code{phase}, \code{kl} and \code{gap} and, for the time
+\item{runs}{A list of fits, each a \code{ripr} fit state, a finished fit from
+\code{ripr::ripr_finish()}, a plain list with a \code{trace} element, or a trace
+data frame with columns \code{phase}, \code{kl} and \code{gap_after} and, for the time
 view, \code{elapsed}. Names, if any, label the runs.}
 
 \item{labels}{Run labels; default the names of \code{runs}, else \verb{run 1},
@@ -37,11 +37,10 @@ in sight) can be compared.
 }
 \details{
 Each run's rows are its trace rows in order. \code{step} counts oracle steps,
-\code{fw + lb} from the trace, so the initial state is step 0 and the rows an
-EM or weight sweep adds between two oracle steps share the step of the
-one they refine: a fully-corrective run's many cheap weight rows do not
-inflate its step count. A trace without those columns is numbered by
-row. The clock time of a row is the cumulative \code{elapsed} up to it --
+the \code{fw} and \code{lb} rows so far by the trace's \code{phase}, so the initial state
+is step 0 and the rows an EM or weight sweep adds between two oracle steps
+share the step of the one they refine: a fully-corrective run's many cheap
+weight rows do not inflate its step count. The clock time of a row is the cumulative \code{elapsed} up to it --
 \code{ripr} records the wall-clock seconds each row cost, the init row
 included -- so a run's time axis is \code{cumsum(trace$elapsed)}. A trace
 without an \code{elapsed} column has no time and is left out of the time view.

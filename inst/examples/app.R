@@ -13,7 +13,7 @@ plurality <- null_model(
   family,
   lapply(2:3, function(j) {
     vertices <- diag(3)
-    vertices[, 1L] <- replace(numeric(3), c(1L, j), 0.5)
+    vertices[1L, ] <- replace(numeric(3), c(1L, j), 0.5)
     simplex_region(vertices = vertices)
   })
 )
@@ -75,7 +75,7 @@ server <- function(input, output, session) {
       reoptimise = TRUE, identify = TRUE, record_gap = TRUE
     )
     x <- likelihood(family(q), label = "Q") /
-      likelihood(finished$P_star, label = "P*")
+      likelihood(finished@P_star, label = "P*")
     nodes <- certify_trace(x, plurality, tol = 1e-9)
     ripr_certify_simplex(problem, ripr_certify_simplex_data(nodes, tol = 1e-9))
   })

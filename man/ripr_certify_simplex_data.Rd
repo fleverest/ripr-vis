@@ -11,8 +11,10 @@ ripr_certify_simplex_data(nodes, tol = NULL)
 per-iteration bounds in its \code{"trace"} attribute, incumbents in
 \code{"incumbent_trace"} and the certificate in \code{"certificate"} -- \strong{or} a
 plain list with elements \code{nodes} (columns \code{part}, \code{cell}, \code{id}, \code{parent},
-\code{depth}, \code{born}, \code{retired}, \code{fate}, \code{upper}, \code{volume}, \code{vertices}),
-\code{trace}, \code{incumbent_trace} and \code{certificate} of the same shapes.}
+\code{depth}, \code{born}, \code{retired}, \code{fate}, \code{upper}, \code{volume}, \code{vertices}, each
+vertex matrix holding one vertex per row), \code{trace}, \code{incumbent_trace}
+and \code{certificate} (a \code{ripr_certificate}, or a list with \code{sup_ub},
+\code{sup_lb} and \code{iterations}).}
 
 \item{tol}{The tolerance the search was run with, echoed into the payload's
 certificate for display. Defaults to the certificate's own \code{tol} when it

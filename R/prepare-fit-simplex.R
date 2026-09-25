@@ -12,14 +12,14 @@
 #'
 #' @param state A `ripr` fit state (the result of `ripr::ripr_init()` advanced
 #'   by `ripr::fw_step()`/`ripr::em_step()`), **or** a plain list with
-#'   elements `trace` (a data frame with columns `fw`, `lb`, `em`, `weight`,
-#'   `phase`, `kl`, `gap_after` and a `gap_after_theta` list column) and
-#'   `snapshots` (a list of `list(iters, phase, atoms, weights)` as `ripr`
-#'   records them).
+#'   elements `trace` (a data frame with columns `step`, `phase`, `kl`,
+#'   `gap_after` and a `gap_after_theta` list column) and `snapshots` (a list
+#'   of `list(step, phase, atoms, weights)` as `ripr` records them, `atoms`
+#'   holding one atom per row).
 #' @param lattice The lattice payload from [ripr_lattice_data()].
-#' @param q,weights The alternative, as in [ripr_problem_simplex_data()]: a
-#'   categories-by-atoms matrix (or vector) and mixture weights over its
-#'   columns. Used to evaluate `Q`'s pmf over the lattice. Alternatively pass
+#' @param q,weights The alternative, as in [ripr_problem_simplex_data()]: an
+#'   atoms-by-categories matrix (or vector) and mixture weights over its
+#'   rows. Used to evaluate `Q`'s pmf over the lattice. Alternatively pass
 #'   `q_pmf` directly and leave these `NULL`.
 #' @param q_pmf `Q`'s pmf over the lattice outcomes, if already computed.
 #' @return A list with elements `ratio`, `support`, `kl`, `gap`, `gap_theta`
@@ -40,8 +40,8 @@ ripr_fit_simplex_data <- function(state, lattice, q = NULL, weights = NULL,
   )
   if (is.null(q_pmf)) {
     stop_unless(!is.null(q), "supply either `q` (and `weights`) or `q_pmf`")
-    q <- as.matrix(q)
-    if (is.null(weights)) weights <- rep(1 / ncol(q), ncol(q))
+    q <- as_points(q)
+    if (is.null(weights)) weights <- rep(1 / nrow(q), nrow(q))
     q_pmf <- lattice_mixture_pmf(lattice, q, weights)
   }
   stop_unless(
@@ -55,11 +55,7 @@ ripr_fit_simplex_data <- function(state, lattice, q = NULL, weights = NULL,
     list(
       ratio = lapply(snapshots, function(s) {
         I(signif(
-          q_pmf / lattice_mixture_pmf(
-            lattice,
-            do.call(cbind, s$atoms),
-            unlist(s$weights)
-          ),
+          q_pmf / lattice_mixture_pmf(lattice, s$atoms, s$weights),
           7
         ))
       })

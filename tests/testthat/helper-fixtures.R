@@ -25,10 +25,7 @@ tiny_lattice <- function(n = 2L) {
 tiny_state <- function() {
   list(
     trace = data.frame(
-      fw = c(1L, 1L),
-      lb = c(0L, 0L),
-      em = c(0L, 1L),
-      weight = c(0L, 0L),
+      step = c(1L, 2L),
       phase = c("fw", "em"),
       kl = c(0.5, 0.4),
       gap_after = c(0.2, NA),
@@ -37,16 +34,16 @@ tiny_state <- function() {
     ),
     snapshots = list(
       list(
-        iters = c(fw = 1L, lb = 0L, em = 0L, weight = 0L),
+        step = 1L,
         phase = "fw",
-        atoms = list(c(0.2, 0.5, 0.3)),
-        weights = list(1)
+        atoms = rbind(c(0.2, 0.5, 0.3)),
+        weights = 1
       ),
       list(
-        iters = c(fw = 1L, lb = 0L, em = 1L, weight = 0L),
+        step = 2L,
         phase = "em",
-        atoms = list(c(0.2, 0.5, 0.3), c(0.1, 0.6, 0.3)),
-        weights = list(0.7, 0.3)
+        atoms = rbind(c(0.2, 0.5, 0.3), c(0.1, 0.6, 0.3)),
+        weights = c(0.7, 0.3)
       )
     )
   )
@@ -56,7 +53,7 @@ tiny_state <- function() {
 # converged immediately (one node). Ids restart per cell, as certify_trace()
 # now records them.
 tiny_nodes <- function() {
-  tri <- function(a, b, c) cbind(a, b, c)
+  tri <- function(a, b, c) rbind(a, b, c, deparse.level = 0)
   list(
     nodes = list(
       part = c(1L, 1L, 1L, 2L),
@@ -89,8 +86,8 @@ tiny_nodes <- function() {
 tiny_problem <- function() {
   ripr_problem_simplex_data(
     null = list(
-      cbind(c(0.5, 0.5, 0), c(0, 1, 0), c(0, 0, 1)),
-      cbind(c(0.5, 0, 0.5), c(0, 1, 0), c(0, 0, 1))
+      rbind(c(0.5, 0.5, 0), c(0, 1, 0), c(0, 0, 1)),
+      rbind(c(0.5, 0, 0.5), c(0, 1, 0), c(0, 0, 1))
     ),
     q = c(0.4, 0.34, 0.26),
     title = "tiny",

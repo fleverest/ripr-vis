@@ -6,10 +6,10 @@
 dart_null <- function() {
   list(
     list(
-      v = cbind(c(1, 0), c(1.75, 0.6), c(1.75, -0.6), c(2.5, 0)),
-      r = cbind(c(1, 0))
+      v = rbind(c(1, 0), c(1.75, 0.6), c(1.75, -0.6), c(2.5, 0)),
+      r = rbind(c(1, 0))
     ),
-    cbind(c(-1, 0), c(-2, 0.5), c(-2, -0.5))
+    rbind(c(-1, 0), c(-2, 0.5), c(-2, -0.5))
   )
 }
 
@@ -29,10 +29,7 @@ plane_state <- function() {
   nodes <- as.matrix(expand.grid(x = c(-1, 0, 1), y = c(-1, 0, 1)))
   list(
     trace = data.frame(
-      fw = c(1L, 1L),
-      lb = c(0L, 0L),
-      em = c(0L, 1L),
-      weight = c(0L, 0L),
+      step = c(1L, 2L),
       phase = c("fw", "em"),
       kl = c(0.3, 0.2),
       gap_after = c(0.1, NA),
@@ -40,16 +37,16 @@ plane_state <- function() {
     ),
     snapshots = list(
       list(
-        iters = c(fw = 1L, lb = 0L, em = 0L, weight = 0L),
+        step = 1L,
         phase = "fw",
-        atoms = list(cbind(c(1, 0))),
-        weights = list(1)
+        atoms = rbind(c(1, 0)),
+        weights = 1
       ),
       list(
-        iters = c(fw = 1L, lb = 0L, em = 1L, weight = 0L),
+        step = 2L,
         phase = "em",
-        atoms = list(cbind(c(1, 0)), cbind(c(-1, 0))),
-        weights = list(0.5, 0.5)
+        atoms = rbind(c(1, 0), c(-1, 0)),
+        weights = c(0.5, 0.5)
       )
     ),
     engine = list(
@@ -76,7 +73,7 @@ test_that("problem2d payload frames the vertices with the margin", {
 test_that("problem2d validates dimensions and margin", {
   expect_error(
     ripr_problem2d_data(list(diag(3)), q = c(0, 0, 0)),
-    "2 rows"
+    "2 columns"
   )
   expect_error(plane_problem(margin = -1), "non-negative")
 })
@@ -101,7 +98,7 @@ test_that("fit2d payload evaluates the field on the extent grid", {
 test_that("the field is exactly one at the iterate's own atom", {
   # With P the single atom at theta*, G(theta*) = sum of the quadrature
   # weights = 1, whatever the nodes: put theta* on a grid point and read it.
-  null <- list(cbind(c(1, 0), c(2, 1), c(2, -1)))
+  null <- list(rbind(c(1, 0), c(2, 1), c(2, -1)))
   pr <- ripr_problem2d_data(null, q = c(1, 0), margin = 0.25)
   # vertex bbox x in [1, 2], y in [-1, 1]; the larger span is 2, so the pad
   # is 0.5 and the extent is x in [0.5, 2.5], y in [-1.5, 1.5]. nx = 9 gives
@@ -164,12 +161,12 @@ test_that("plane widgets build and their payloads survive the wire", {
 test_that("fit2d builds from a real gaussian ripr state", {
   skip_if_not_installed("ripr")
 
-  fam <- ripr::gaussian_family(dim = 2L)
+  fam <- ripr::gaussian_family(d = 2L)
   null <- ripr::null_model(
     fam,
     list(ripr::polyhedron_region(
-      vertices = cbind(c(1, 0), c(2, 0.7), c(2, -0.7)),
-      rays = cbind(c(1, 0))
+      vertices = rbind(c(1, 0), c(2, 0.7), c(2, -0.7)),
+      rays = rbind(c(1, 0))
     ))
   )
   set.seed(1L)

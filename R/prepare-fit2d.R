@@ -90,6 +90,7 @@ ripr_fit2d_data <- function(state, problem, sigma = NULL, nx = 112L) {
 
   # Per step only the mixture P_i at the nodes changes: G over the whole grid
   # is then one log-sum-exp reduction of ld - log_p + log_w down the columns.
+  # `atoms` here is one atom per column, like the grid `theta`.
   log_p_at_nodes <- function(atoms, weights) {
     a <- ns %*% atoms
     a <- a - 0.5 * rowSums(ns * nodes) + const
@@ -98,7 +99,7 @@ ripr_fit2d_data <- function(state, problem, sigma = NULL, nx = 112L) {
   }
 
   z <- lapply(snapshots, function(s) {
-    log_p <- log_p_at_nodes(do.call(cbind, s$atoms), unlist(s$weights))
+    log_p <- log_p_at_nodes(t(as_points(s$atoms)), as.numeric(s$weights))
     log_g <- col_lse(ld - log_p + log_w)
     I(signif(pmin(pmax(log_g / log(10), -6), 6), 4))
   })

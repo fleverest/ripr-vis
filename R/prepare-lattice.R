@@ -41,7 +41,7 @@ ripr_lattice_data <- function(family) {
   )
   list(
     n = n,
-    outcomes = cols(t(y)),
+    outcomes = rows(y),
     log_choose = I(lfactorial(n) - rowSums(lfactorial(y)))
   )
 }
@@ -57,13 +57,13 @@ lattice_pmf <- function(lattice, theta) {
   as.vector(exp(lattice$log_choose + y %*% log(pmax(theta, 1e-300))))
 }
 
-# Pmf of a finite mixture of multinomials: `atoms` is a categories-by-atoms
-# matrix and `weights` a vector over its columns.
+# Pmf of a finite mixture of multinomials: `atoms` is an atoms-by-categories
+# matrix (one atom per row) and `weights` a vector over its rows.
 lattice_mixture_pmf <- function(lattice, atoms, weights) {
-  atoms <- as.matrix(atoms)
+  atoms <- as_points(atoms)
   p <- vapply(
-    seq_len(ncol(atoms)),
-    function(j) lattice_pmf(lattice, atoms[, j]),
+    seq_len(nrow(atoms)),
+    function(j) lattice_pmf(lattice, atoms[j, ]),
     numeric(length(lattice$log_choose))
   )
   as.vector(p %*% weights)

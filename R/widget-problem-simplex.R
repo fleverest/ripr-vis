@@ -11,8 +11,8 @@
 #' @examples
 #' ripr_problem_simplex(ripr_problem_simplex_data(
 #'   null = list(
-#'     cbind(c(0.5, 0.5, 0), c(0, 1, 0), c(0, 0, 1)),
-#'     cbind(c(0.5, 0, 0.5), c(0, 1, 0), c(0, 0, 1))
+#'     rbind(c(0.5, 0.5, 0), c(0, 1, 0), c(0, 0, 1)),
+#'     rbind(c(0.5, 0, 0.5), c(0, 1, 0), c(0, 0, 1))
 #'   ),
 #'   q = c(0.40, 0.34, 0.26)
 #' ))

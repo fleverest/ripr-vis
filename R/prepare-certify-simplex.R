@@ -11,8 +11,10 @@
 #'   per-iteration bounds in its `"trace"` attribute, incumbents in
 #'   `"incumbent_trace"` and the certificate in `"certificate"` -- **or** a
 #'   plain list with elements `nodes` (columns `part`, `cell`, `id`, `parent`,
-#'   `depth`, `born`, `retired`, `fate`, `upper`, `volume`, `vertices`),
-#'   `trace`, `incumbent_trace` and `certificate` of the same shapes.
+#'   `depth`, `born`, `retired`, `fate`, `upper`, `volume`, `vertices`, each
+#'   vertex matrix holding one vertex per row), `trace`, `incumbent_trace`
+#'   and `certificate` (a `ripr_certificate`, or a list with `sup_ub`,
+#'   `sup_lb` and `iterations`).
 #' @param tol The tolerance the search was run with, echoed into the payload's
 #'   certificate for display. Defaults to the certificate's own `tol` when it
 #'   carries one.
@@ -43,7 +45,9 @@ ripr_certify_simplex_data <- function(nodes, tol = NULL) {
     "`nodes` must carry trace, incumbent_trace and certificate ",
     "(use ripr::certify_trace(), not ripr::certify())"
   )
-  if (is.null(tol)) tol <- certificate$tol
+  if (is.null(tol) && !inherits(certificate, "S7_object")) {
+    tol <- certificate$tol
+  }
 
   cell_ids <- sort(unique(tab$cell))
   stop_unless(
@@ -58,14 +62,14 @@ ripr_certify_simplex_data <- function(nodes, tol = NULL) {
     stop_unless(!is.na(root), "cell ", ci, " has no root node (id 1)")
     list(
       part = tab$part[root],
-      vertices = cols(as.matrix(tab$vertices[[root]]))
+      vertices = rows(tab$vertices[[root]])
     )
   })
 
   cert <- list(
-    sup_ub = certificate$sup_ub,
-    sup_lb = certificate$sup_lb,
-    iterations = I(certificate$iterations)
+    sup_ub = field(certificate, "sup_ub"),
+    sup_lb = field(certificate, "sup_lb"),
+    iterations = I(field(certificate, "iterations"))
   )
   if (!is.null(tol)) cert$tol <- tol
 
@@ -82,7 +86,7 @@ ripr_certify_simplex_data <- function(nodes, tol = NULL) {
       fate = I(tab$fate),
       upper = I(tab$upper),
       volume = I(tab$volume),
-      vertices = lapply(tab$vertices, cols)
+      vertices = lapply(tab$vertices, rows)
     ),
     # `upper[[c]][t]` is cell c's certified bound after iteration t and
     # `lower[[c]][t]` the best value attained by then: the enclosure the

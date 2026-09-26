@@ -11,8 +11,9 @@ ripr_fit_simplex_data(state, lattice, q = NULL, weights = NULL, q_pmf = NULL)
 by \code{ripr::fw_step()}/\code{ripr::em_step()}), \strong{or} a plain list with
 elements \code{trace} (a data frame with columns \code{step}, \code{phase}, \code{kl},
 \code{gap_after} and a \code{gap_after_theta} list column) and \code{snapshots} (a list
-of \code{list(step, phase, atoms, weights)} as \code{ripr} records them, \code{atoms}
-holding one atom per row).}
+of \code{list(step, phase, mixing)} as \code{ripr} records them, \code{mixing} a
+finite distribution; a stand-in may give \code{atoms} (one per row) and
+\code{weights} in place of \code{mixing}).}
 
 \item{lattice}{The lattice payload from \code{\link[=ripr_lattice_data]{ripr_lattice_data()}}.}
 

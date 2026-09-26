@@ -99,7 +99,7 @@ ripr_fit2d_data <- function(state, problem, sigma = NULL, nx = 112L) {
   }
 
   z <- lapply(snapshots, function(s) {
-    log_p <- log_p_at_nodes(t(as_points(s$atoms)), as.numeric(s$weights))
+    log_p <- log_p_at_nodes(t(snapshot_atoms(s)), snapshot_weights(s))
     log_g <- col_lse(ld - log_p + log_w)
     I(signif(pmin(pmax(log_g / log(10), -6), 6), 4))
   })

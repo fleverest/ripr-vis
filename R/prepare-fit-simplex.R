@@ -14,8 +14,9 @@
 #'   by `ripr::fw_step()`/`ripr::em_step()`), **or** a plain list with
 #'   elements `trace` (a data frame with columns `step`, `phase`, `kl`,
 #'   `gap_after` and a `gap_after_theta` list column) and `snapshots` (a list
-#'   of `list(step, phase, atoms, weights)` as `ripr` records them, `atoms`
-#'   holding one atom per row).
+#'   of `list(step, phase, mixing)` as `ripr` records them, `mixing` a
+#'   finite distribution; a stand-in may give `atoms` (one per row) and
+#'   `weights` in place of `mixing`).
 #' @param lattice The lattice payload from [ripr_lattice_data()].
 #' @param q,weights The alternative, as in [ripr_problem_simplex_data()]: an
 #'   atoms-by-categories matrix (or vector) and mixture weights over its
@@ -55,7 +56,11 @@ ripr_fit_simplex_data <- function(state, lattice, q = NULL, weights = NULL,
     list(
       ratio = lapply(snapshots, function(s) {
         I(signif(
-          q_pmf / lattice_mixture_pmf(lattice, s$atoms, s$weights),
+          q_pmf / lattice_mixture_pmf(
+            lattice,
+            snapshot_atoms(s),
+            snapshot_weights(s)
+          ),
           7
         ))
       })

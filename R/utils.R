@@ -94,8 +94,8 @@ fit_diagnostics <- function(trace, snapshots, row) {
   list(
     support = lapply(snapshots, function(s) {
       list(
-        atoms = rows(s$atoms),
-        weights = I(as.numeric(s$weights))
+        atoms = rows(snapshot_atoms(s)),
+        weights = I(snapshot_weights(s))
       )
     }),
     kl = I(trace$kl[row]),
@@ -108,4 +108,14 @@ fit_diagnostics <- function(trace, snapshots, row) {
     }),
     phase = I(trace$phase[row])
   )
+}
+
+# A snapshot's mixture: `ripr` records it as a `finite_dist` in `$mixing`; a
+# plain-list stand-in may give `$atoms` (one per row) and `$weights` directly.
+snapshot_atoms <- function(s) {
+  if (!is.null(s$mixing)) field(s$mixing, "atoms") else as_points(s$atoms)
+}
+
+snapshot_weights <- function(s) {
+  as.numeric(if (!is.null(s$mixing)) field(s$mixing, "weights") else s$weights)
 }

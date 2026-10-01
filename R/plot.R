@@ -57,6 +57,8 @@ EDGE <- "#8d867a"
 PART_FILL <- "#dedad0"
 PART_EDGE <- "#9c9488"
 RUN_COLOURS <- c("#2a6aa8", "#b8452f", "#2f8f6f", "#8455b0", "#b5820a")
+# The widget's dash patterns (dotted, dashed, solid, dash-dot) as R `lty`s.
+RUN_DASHES <- c("13", "63", "solid", "8323")
 
 #' @rdname plots
 #' @export
@@ -70,7 +72,11 @@ plot_problem <- function(x, alternative = NULL, title = "ripr",
     draw_atoms(p$marks$q, p$marks$weights, to_xy = ternary_xy)
     ternary_labels()
   } else {
-    plane_frame(p$extent)
+    op <- plane_frame(p$extent)
+    on.exit({
+      graphics::box()
+      graphics::par(op)
+    })
     draw_parts_plane(p$seeds, p$extent, fill = TRUE)
     draw_atoms(p$marks$q, p$marks$weights, to_xy = identity_xy)
   }
@@ -98,10 +104,21 @@ plot_fit <- function(x, step = NULL, title = "ripr", part_labels = NULL,
     ternary_outline()
     to_xy <- ternary_xy
   } else {
-    plane_frame(p$extent)
+    op <- plane_frame(p$extent)
+    on.exit({
+      graphics::box()
+      graphics::par(op)
+    })
     plane_field(p$fit$field, p$fit$z[[step]])
     draw_parts_plane(p$seeds, p$extent, fill = FALSE, border = INK)
-    to_xy <- identity_xy
+    # Base graphics clips to the region plot.new() set, before the frame
+    # was fitted to the extent, so marks off the extent are dropped here.
+    to_xy <- function(b) {
+      b <- as_points(b)
+      ok <- b[, 1L] >= p$extent$x[1L] & b[, 1L] <= p$extent$x[2L] &
+        b[, 2L] >= p$extent$y[1L] & b[, 2L] <= p$extent$y[2L]
+      b[ok, , drop = FALSE]
+    }
   }
   draw_atoms(
     support$atoms, support$weights, to_xy = to_xy,
@@ -169,6 +186,10 @@ plot_compare <- function(runs, labels = NULL, colour_by = NULL, dash_by = NULL,
   colour <- function(r) {
     if (r$colour <= length(RUN_COLOURS)) RUN_COLOURS[r$colour] else EDGE
   }
+  dashes <- !is.null(p$legend$dash)
+  lty <- function(r) {
+    if (dashes) RUN_DASHES[(r$dash - 1L) %% length(RUN_DASHES) + 1L] else "solid"
+  }
   for (what in panels) {
     xs <- lapply(p$runs, function(r) as.numeric(if (x == "step") r$step else r$time))
     ys <- lapply(p$runs, function(r) as.numeric(r[[what]]))
@@ -189,17 +210,29 @@ plot_compare <- function(runs, labels = NULL, colour_by = NULL, dash_by = NULL,
         (what == "kl" | ys[[i]] > 0)
       graphics::lines(
         xs[[i]][keep], ys[[i]][keep],
-        col = colour(p$runs[[i]]), lty = p$runs[[i]]$dash, lwd = 1.5
+        col = colour(p$runs[[i]]), lty = lty(p$runs[[i]]), lwd = 1.5
       )
     }
   }
   if (legend) {
-    lbl <- vapply(p$runs, function(r) r$label, "")
+    # Grouped runs are keyed by their groups, as in the widget; ungrouped
+    # runs by their labels.
+    if (is.null(p$legend$colour) && !dashes) {
+      lbl <- vapply(p$runs, function(r) r$label, "")
+      col <- vapply(p$runs, colour, "")
+      lt <- rep("solid", length(lbl))
+    } else {
+      lc <- as.character(p$legend$colour)
+      ld <- as.character(p$legend$dash)
+      lbl <- c(lc, ld)
+      col <- c(utils::head(c(RUN_COLOURS, rep(EDGE, length(lc))), length(lc)),
+               rep(INK, length(ld)))
+      lt <- c(rep("solid", length(lc)),
+              RUN_DASHES[(seq_along(ld) - 1L) %% length(RUN_DASHES) + 1L])
+    }
     graphics::legend(
       "topright", legend = lbl, bty = "n",
-      col = vapply(p$runs, colour, ""),
-      lty = vapply(p$runs, function(r) as.integer(r$dash), 1L),
-      lwd = 1.5, cex = 0.8
+      col = col, lty = lt, lwd = 1.5, cex = 0.8, seg.len = 3
     )
   }
   invisible(p)
@@ -254,12 +287,15 @@ draw_parts_simplex <- function(seeds, fill, border = PART_EDGE) {
 draw_atoms <- function(q, weights, to_xy, pch = 19, col = INK, cex = NULL,
                        lwd = 1) {
   if (length(q) == 0L) return(invisible())
-  xy <- to_xy(unrows(q))
+  pts <- unrows(q)
   if (is.null(cex)) {
     w <- as.numeric(weights)
     cex <- if (length(w)) pmax(0.4, 1.4 * sqrt(w / max(w))) else 1
   }
-  graphics::points(xy, pch = pch, col = col, cex = cex, lwd = lwd)
+  # Sizes go with their points through any filtering `to_xy` does.
+  cex <- rep_len(cex, nrow(pts))
+  keep <- vapply(seq_len(nrow(pts)), function(i) nrow(to_xy(pts[i, ])) > 0L, TRUE)
+  graphics::points(to_xy(pts), pch = pch, col = col, cex = cex[keep], lwd = lwd)
 }
 
 # The deck's diverging colours about G = 1, on log10 G clamped to +-1.2.
@@ -330,12 +366,32 @@ simplex_field <- function(lattice, ratio, n = 300L) {
 
 # --- Planar drawing --------------------------------------------------------------
 
+# The plot region is shrunk to the extent's aspect ratio, so the axes are
+# equally scaled and the field, computed over the extent, fills the frame.
+# Returns the `par()` to restore once the plot is drawn.
 plane_frame <- function(extent) {
-  graphics::plot(
-    as.numeric(extent$x), as.numeric(extent$y), type = "n", asp = 1,
-    xaxs = "i", yaxs = "i", xlab = quote(theta[1]), ylab = quote(theta[2]),
-    las = 1
-  )
+  x <- as.numeric(extent$x)
+  y <- as.numeric(extent$y)
+  graphics::plot.new()
+  pin <- graphics::par("pin")
+  plt <- graphics::par("plt")
+  ratio <- diff(y) / diff(x)
+  if (pin[2L] / pin[1L] > ratio) {
+    h <- (plt[4L] - plt[3L]) * (pin[1L] * ratio / pin[2L])
+    mid <- mean(plt[3:4])
+    new <- c(plt[1:2], mid - h / 2, mid + h / 2)
+  } else {
+    w <- (plt[2L] - plt[1L]) * (pin[2L] / ratio / pin[1L])
+    mid <- mean(plt[1:2])
+    new <- c(mid - w / 2, mid + w / 2, plt[3:4])
+  }
+  op <- graphics::par(plt = new)
+  graphics::plot.window(x, y, xaxs = "i", yaxs = "i")
+  graphics::axis(1)
+  graphics::axis(2, las = 1)
+  graphics::box()
+  graphics::title(xlab = quote(theta[1]), ylab = quote(theta[2]))
+  op
 }
 
 plane_field <- function(field, z) {

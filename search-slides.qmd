@@ -36,15 +36,15 @@ plurality <- null_model(
   family,
   lapply(2:K, function(j) {
     vertices <- diag(K)
-    vertices[, 1L] <- replace(numeric(K), c(1L, j), 0.5)
+    vertices[1L, ] <- replace(numeric(K), c(1L, j), 0.5)
     simplex_region(vertices = vertices)
   })
 )
 
 # A margin small enough that the null is not trivially far away: a wide one puts
 # the projection in a corner and both the fit and the search end immediately.
-q_plur <- matrix(c(0.40, 0.34, 0.26), ncol = 1L)
-Q_plur <- family(as.vector(q_plur))
+q_plur <- c(0.40, 0.34, 0.26)
+Q_plur <- family(q_plur)
 ```
 
 ```{r plurality-fit}
@@ -79,7 +79,7 @@ fit_plur <- ripr_finish(
 #| cache: true
 #| dependson: ["plurality-fit"]
 X_plur <- likelihood(Q_plur, label = "Q") /
-  likelihood(fit_plur$P_star, label = "P*")
+  likelihood(fit_plur@P_star, label = "P*")
 nodes_plur <- certify_trace(X_plur, plurality, tol = TOL)
 ```
 
@@ -148,14 +148,14 @@ names(fw_variants) <- paste(fw_grid$variant, fw_grid$size, sep = " · ")
 medial <- null_model(
   family,
   list(simplex_region(
-    vertices = cbind(c(0.5, 0.5, 0), c(0.5, 0, 0.5), c(0, 0.5, 0.5))
+    vertices = rbind(c(0.5, 0.5, 0), c(0.5, 0, 0.5), c(0, 0.5, 0.5))
   ))
 )
 
 # One dirac per candidate leading, equally weighted, so Q is a genuine mixture
 # rather than a single multinomial.
-q_med <- cbind(c(0.6, 0.2, 0.2), c(0.2, 0.6, 0.2), c(0.2, 0.2, 0.6))
-W_med <- finite_dist(components = q_med, weights = rep(1 / 3, 3L))
+q_med <- rbind(c(0.6, 0.2, 0.2), c(0.2, 0.6, 0.2), c(0.2, 0.2, 0.6))
+W_med <- finite_dist(atoms = q_med, weights = rep(1 / 3, 3L))
 Q_med <- family(W_med)
 ```
 
@@ -189,7 +189,7 @@ fit_med <- ripr_finish(
 #| cache: true
 #| dependson: ["medial-fit"]
 X_med <- likelihood(Q_med, label = "Q") /
-  likelihood(fit_med$P_star, label = "P*")
+  likelihood(fit_med@P_star, label = "P*")
 nodes_med <- certify_trace(X_med, medial, tol = TOL)
 ```
 
@@ -199,25 +199,25 @@ nodes_med <- certify_trace(X_med, medial, tol = TOL)
 # is one unbounded polyhedron, a cup: four vertices along its floor and two
 # recession rays running up its sides, so it is drawn in V-representation and
 # recedes past the frame rather than ending at an edge.
-gauss <- gaussian_family(dim = 2L)
+gauss <- gaussian_family(d = 2L)
 cup <- null_model(
   gauss,
   list(polyhedron_region(
-    vertices = cbind(c(-1, 0), c(-0.4, -0.6), c(0.4, -0.6), c(1, 0)),
-    rays = cbind(c(-0.3, 1), c(0.3, 1))
+    vertices = rbind(c(-1, 0), c(-0.4, -0.6), c(0.4, -0.6), c(1, 0)),
+    rays = rbind(c(-0.3, 1), c(0.3, 1))
   ))
 )
 
 # Five equally weighted atoms ringing the cup, all outside it: one under the
 # floor, one off each rim, and one flanking each ray further up.
-q_cup <- cbind(
+q_cup <- rbind(
   c(0, -1.6),
   c(-1.9, 0.3),
   c(1.9, 0.3),
   c(-2.3, 2.2),
   c(2.3, 2.2)
 )
-W_cup <- finite_dist(components = q_cup, weights = rep(1 / 5, 5L))
+W_cup <- finite_dist(atoms = q_cup, weights = rep(1 / 5, 5L))
 Q_cup <- gauss(W_cup)
 ```
 
@@ -251,54 +251,54 @@ fit_cup <- ripr_finish(
 
 ```{r payloads}
 #| include: false
-# Everything the widgets draw. The fits and certifications above are cached;
-# this reshaping is cheap enough to run every render, and riprvis owns the
-# R-to-browser crossing that the old ojs_define()/JSON plumbing did by hand.
-lattice <- ripr_lattice_data(family)
-
-plur_problem <- ripr_problem_simplex_data(
-  plurality,
-  q = q_plur,
-  title = "plurality",
-  part_labels = c("θ₁ ≤ θ₂", "θ₁ ≤ θ₃")
+# Everything the slides draw. The fits and certifications above are cached;
+# building the widgets is cheap enough to run every render.
+plur_labels <- c("θ₁ ≤ θ₂", "θ₁ ≤ θ₃")
+plur_problem <- vis_problem(
+  plurality, alternative = Q_plur,
+  title = "plurality", part_labels = plur_labels, height = 470
 )
-plur_fit <- ripr_fit_simplex_data(state_plur, lattice, q = q_plur)
-plur_cert <- ripr_certify_simplex_data(nodes_plur, tol = TOL)
-plur_compare <- ripr_compare_data(list(
-  "Frank–Wolfe" = state_fw,
-  "Li–Barron" = state_lb
-))
-plur_variants <- ripr_compare_data(
+plur_fit <- vis_fit(
+  state_plur, title = "plurality", part_labels = plur_labels, height = 545
+)
+plur_cert <- vis_certify(
+  nodes_plur, alternative = Q_plur,
+  title = "plurality", part_labels = plur_labels, height = 545
+)
+plur_compare <- vis_compare(
+  list("Frank–Wolfe" = state_fw, "Li–Barron" = state_lb),
+  height = 580
+)
+plur_variants <- vis_compare(
   fw_variants,
   colour_by = fw_grid$variant,
-  dash_by = fw_grid$size
+  dash_by = fw_grid$size,
+  height = 580
 )
 
-med_problem <- ripr_problem_simplex_data(
-  medial,
-  q = q_med,
-  weights = rep(1 / 3, 3L),
-  title = "medial",
-  part_labels = "θⱼ ≤ ½ for every j"
+med_labels <- "θⱼ ≤ ½ for every j"
+med_problem <- vis_problem(
+  medial, alternative = Q_med,
+  title = "medial", part_labels = med_labels, height = 470
 )
-med_fit <- ripr_fit_simplex_data(
-  state_med,
-  lattice,
-  q = q_med,
-  weights = rep(1 / 3, 3L)
+med_fit <- vis_fit(
+  state_med, title = "medial", part_labels = med_labels, height = 545
 )
-med_cert <- ripr_certify_simplex_data(nodes_med, tol = TOL)
+med_cert <- vis_certify(
+  nodes_med, alternative = Q_med,
+  title = "medial", part_labels = med_labels, height = 545
+)
 
-# The planar payloads: the cup's generators frame the view, and the field is
-# evaluated in R on that frame's grid with the fit's own frozen draws.
-cup_problem <- ripr_problem2d_data(
-  cup,
-  q = q_cup,
-  weights = rep(1 / 5, 5L),
-  title = "cup",
-  part_labels = "conv(V) + cone(R)"
+# The cup's generators frame the view, and the field is evaluated in R on
+# that frame's grid with the fit's own frozen draws.
+cup_labels <- "conv(V) + cone(R)"
+cup_problem <- vis_problem(
+  cup, alternative = Q_cup,
+  title = "cup", part_labels = cup_labels, height = 470
 )
-cup_fit <- ripr_fit2d_data(state_cup, cup_problem)
+cup_fit <- vis_fit(
+  state_cup, title = "cup", part_labels = cup_labels, height = 545
+)
 ```
 
 ## The plurality problem {.slide}
@@ -306,7 +306,7 @@ cup_fit <- ripr_fit2d_data(state_cup, cup_problem)
 ::: {.stage}
 ::: {.left}
 ```{r}
-ripr_problem_simplex(plur_problem, height = 470)
+plur_problem
 ```
 :::
 
@@ -338,7 +338,7 @@ is a point in the triangle, so the whole problem is drawable.
 ## Fitting the projection {.slide}
 
 ```{r}
-ripr_fit_simplex(plur_problem, plur_fit, lattice, height = 545)
+plur_fit
 ```
 
 ::: {.caption}
@@ -350,7 +350,7 @@ is done when no red is left inside the dashed region.
 ## Certifying the fit {.slide}
 
 ```{r}
-ripr_certify_simplex(plur_problem, plur_cert, height = 545)
+plur_cert
 ```
 
 ::: {.caption}
@@ -362,7 +362,7 @@ closing; the certified bound is the larger of the two facets'.
 ## Comparing the fitting algorithms {.slide}
 
 ```{r}
-ripr_compare(plur_compare, height = 580)
+plur_compare
 ```
 
 ::: {.caption}
@@ -376,7 +376,7 @@ Frank–Wolfe steps, and see whether it stays there.
 ## Comparing Frank–Wolfe variants {.slide}
 
 ```{r}
-ripr_compare(plur_variants, height = 580)
+plur_variants
 ```
 
 ::: {.caption}
@@ -392,7 +392,7 @@ to read it off.
 ::: {.stage}
 ::: {.left}
 ```{r}
-ripr_problem_simplex(med_problem, height = 470)
+med_problem
 ```
 :::
 
@@ -425,7 +425,7 @@ vertex of the simplex.
 ## Fitting the projection {.slide}
 
 ```{r}
-ripr_fit_simplex(med_problem, med_fit, lattice, height = 545)
+med_fit
 ```
 
 ::: {.caption}
@@ -436,7 +436,7 @@ reweights the atoms already there.
 ## Certifying the fit {.slide}
 
 ```{r}
-ripr_certify_simplex(med_problem, med_cert, height = 545)
+med_cert
 ```
 
 ::: {.caption}
@@ -448,7 +448,7 @@ One cell, interior to the simplex, so the bisection has no vertex to run to.
 ::: {.stage}
 ::: {.left}
 ```{r}
-ripr_problem2d(cup_problem, height = 470)
+cup_problem
 ```
 :::
 
@@ -485,7 +485,7 @@ the geometry nearest the alternative fills the view however far the cup runs.
 ## Fitting the projection {.slide}
 
 ```{r}
-ripr_fit2d(cup_problem, cup_fit, height = 545)
+cup_fit
 ```
 
 ::: {.caption}

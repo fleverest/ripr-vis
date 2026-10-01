@@ -20,9 +20,10 @@ riprvis draws the three stages of building a certified e-variable with
 [ripr](https://github.com/fleverest/ripr): the problem (a composite null and
 a fixed alternative), the fit (the reverse information projection of the
 alternative onto the null), and the certification (a branch-and-bound upper
-bound on the worst-case null expectation). Each stage is one htmlwidget, so
-the visualisations work in the RStudio viewer, R Markdown and Quarto
-documents, and Shiny.
+bound on the worst-case null expectation). Each stage has two verbs: a
+`vis_*()` htmlwidget for exploring, which works in the RStudio viewer, R
+Markdown and Quarto documents, and Shiny; and a `plot_*()` static plot for
+print.
 
 This vignette needs `ripr` installed
 (`remotes::install_github("fleverest/ripr")`); without it the code below is
@@ -43,19 +44,14 @@ plurality <- null_model(
   family,
   lapply(2:3, function(j) {
     vertices <- diag(3)
-    vertices[, 1L] <- replace(numeric(3), c(1L, j), 0.5)
+    vertices[1L, ] <- replace(numeric(3), c(1L, j), 0.5)
     simplex_region(vertices = vertices)
   })
 )
 q <- c(0.40, 0.34, 0.26)
+labels <- c("θ₁ ≤ θ₂", "θ₁ ≤ θ₃")
 
-problem <- ripr_problem_simplex_data(
-  plurality,
-  q = q,
-  title = "plurality",
-  part_labels = c("θ₁ ≤ θ₂", "θ₁ ≤ θ₃")
-)
-ripr_problem_simplex(problem)
+vis_problem(plurality, alternative = family(q), part_labels = labels)
 ```
 
 ## Fitting the projection
@@ -78,9 +74,7 @@ for (i in seq_len(15L)) {
     em_step(record_gap = TRUE)
 }
 
-lattice <- ripr_lattice_data(family)
-fit <- ripr_fit_simplex_data(state, lattice, q = q)
-ripr_fit_simplex(problem, fit, lattice)
+vis_fit(state, part_labels = labels)
 ```
 
 Drag the step slider (or press play) to watch the field
@@ -100,11 +94,10 @@ finished <- ripr_finish(
   reoptimise = TRUE, identify = TRUE, record_gap = TRUE
 )
 x <- likelihood(family(q), label = "Q") /
-  likelihood(finished$P_star, label = "P*")
+  likelihood(finished@P_star, label = "P*")
 nodes <- certify_trace(x, plurality, tol = 1e-9)
 
-certify <- ripr_certify_simplex_data(nodes, tol = 1e-9)
-ripr_certify_simplex(problem, certify)
+vis_certify(nodes, alternative = family(q), part_labels = labels)
 ```
 
 Each cell of the null is searched independently — the tabs choose a search,
@@ -119,7 +112,7 @@ is the search tree, depth against birth iteration.
 maximiser of the field; Li–Barron scores each candidate by the KL of the
 mixture *after* its weights are re-chosen, so each step achieves more and
 costs several times as much. Which is ahead depends on whether steps or
-seconds are being counted, and `ripr_compare()` shows both: it overlays the
+seconds are being counted, and `vis_compare()` shows both: it overlays the
 KL, gap and growth traces of several runs, with tabs switching the axis
 between the step count and the clock. The clock is the trace's own
 `elapsed` column -- the seconds each row cost -- accumulated.
@@ -133,11 +126,10 @@ for (i in seq_len(6L)) {
     em_step(record_gap = TRUE)
 }
 
-compare <- ripr_compare_data(list(
+vis_compare(list(
   "Frank–Wolfe + EM" = state,
   "Li–Barron + EM" = state_lb
 ))
-ripr_compare(compare)
 ```
 
 Only the trace is read, so the same comparison works for planar fits, for
@@ -145,7 +137,7 @@ Only the trace is read, so the same comparison works for planar fits, for
 
 ## A Gaussian family with polyhedral nulls
 
-The planar widgets do the same job for two-dimensional families whose
+The same verbs draw two-dimensional families whose
 parameter is a point of the plane. Here the family is a bivariate Gaussian
 with identity covariance, the alternative sits at the origin, and the null is
 four pointy polyhedra -- each with four vertices and a single recession ray
@@ -154,30 +146,25 @@ viewport sizes itself to the parts' vertices (plus a margin), so the rays
 simply run off the edge and the geometry near the alternative fills the view.
 
 ```{r gaussian}
-gauss <- gaussian_family(dim = 2L)
+gauss <- gaussian_family(d = 2L)
 dart <- function(axis, sgn) {
   e <- c(0, 0)
   e[axis] <- sgn
   perp <- c(0, 0)
   perp[3L - axis] <- 1
   polyhedron_region(
-    vertices = cbind(e, 1.75 * e + 0.6 * perp, 1.75 * e - 0.6 * perp,
+    vertices = rbind(e, 1.75 * e + 0.6 * perp, 1.75 * e - 0.6 * perp,
                      2.5 * e),
-    rays = cbind(e)
+    rays = rbind(e)
   )
 }
 darts <- null_model(
   gauss,
   list(dart(1, 1), dart(1, -1), dart(2, 1), dart(2, -1))
 )
+darts_labels <- c("+x", "-x", "+y", "-y")
 
-problem2d <- ripr_problem2d_data(
-  darts,
-  q = c(0, 0),
-  title = "four darts",
-  part_labels = c("+x", "-x", "+y", "-y")
-)
-ripr_problem2d(problem2d)
+vis_problem(darts, alternative = gauss(c(0, 0)), part_labels = darts_labels)
 ```
 
 The sample space is continuous, so the fit runs on a quadrature engine, and
@@ -193,7 +180,7 @@ state2d <- ripr_init(
   gauss(c(0, 0)), darts,
   engine = gh_engine(24L),
   atoms = list(
-    cbind(c(2.5, 0)), cbind(c(-2.5, 0)), cbind(c(0, 2.5)), cbind(c(0, -2.5))
+    rbind(c(2.5, 0)), rbind(c(-2.5, 0)), rbind(c(0, 2.5)), rbind(c(0, -2.5))
   ),
   control = ripr_control(snapshot = "all")
 )
@@ -203,15 +190,48 @@ for (i in seq_len(10L)) {
     em_step(record_gap = TRUE)
 }
 
-fit2d <- ripr_fit2d_data(state2d, problem2d)
-ripr_fit2d(problem2d, fit2d)
+vis_fit(state2d, part_labels = darts_labels)
 ```
 
-## Without ripr
+## Figures for print
 
-The widget constructors never touch `ripr`: they take plain-list payloads
-whose shapes are documented in `ripr_problem_simplex_data()`,
-`ripr_fit_simplex_data()`, `ripr_lattice_data()` and
-`ripr_certify_simplex_data()`. Saved results — say, the payloads above
-serialised with `saveRDS()` on a machine that has `ripr` — render anywhere
-this package is installed.
+Each `vis_*()` verb has a `plot_*()` twin that draws one frame with base
+graphics, so the usual devices and layouts apply. `plot_fit()` and
+`plot_certify()` take the step or iteration to draw, defaulting to the last.
+
+```{r static, fig.width = 7, fig.height = 7, out.width = "100%"}
+op <- par(mfrow = c(2, 2), mar = c(1, 1, 2, 1))
+plot_problem(state)
+title("The problem")
+plot_fit(state, step = 1)
+title("The fit, at the start")
+plot_fit(state)
+title("The fit, at the end")
+plot_certify(nodes, iteration = 3)
+title("Certification, iteration 3")
+par(op)
+```
+
+```{r static-compare, fig.width = 7, fig.height = 5, out.width = "100%"}
+plot_compare(list(
+  "Frank–Wolfe + EM" = state,
+  "Li–Barron + EM" = state_lb
+))
+```
+
+Wrap them in `pdf()` or `svg()` for a paper.
+
+## Saving and redrawing
+
+Every widget and plot draws from a plain-list payload. `riprvis_payload()`
+extracts it, and any `vis_*()` or `plot_*()` verb of the same kind redraws
+it, with or without `ripr` installed:
+
+```{r payload, eval = FALSE}
+saveRDS(riprvis_payload(vis_fit(state)), "fit.rds")
+
+# Later, anywhere riprvis is installed:
+p <- readRDS("fit.rds")
+vis_fit(p)
+plot_fit(p, step = 5)
+```

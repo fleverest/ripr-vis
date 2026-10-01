@@ -7,37 +7,35 @@ things:
 
 ## The `riprvis` R package
 
-An [htmlwidgets](https://www.htmlwidgets.org) package (at the repository
-root) that renders the visualisations in the RStudio viewer, R Markdown and
-Quarto documents, and Shiny:
+Visualisations of the objects `ripr` produces, at the repository root. Each
+view has two verbs: a `vis_*()` htmlwidget for exploring, which works in the
+RStudio viewer, R Markdown and Quarto documents, and Shiny; and a `plot_*()`
+base-graphics plot of one frame, for print.
 
-- `ripr_problem_simplex()` — the null region and the alternative's support
-  on the ternary simplex.
-- `ripr_fit_simplex()` — the Bernstein field \(G_i(\theta) = E_\theta[Q/P_i]\)
-  as an animated contour plot, with KL / gap / growth diagnostics.
-- `ripr_certify_simplex()` — the branch-and-bound search: the evolving cell
-  partition, the closing enclosure window, and the search tree.
-- `ripr_compare()` — several fits of one problem (Frank–Wolfe against
-  Li–Barron, say) as overlaid KL / gap / growth traces, against the oracle
-  step count or the clock time `ripr` records in the trace; two crossed
-  factors can be told apart by colour and line style.
+- `vis_problem()` / `plot_problem()`: the null's parts and the alternative's
+  support.
+- `vis_fit()` / `plot_fit()`: the field \(G_i(\theta) = E_\theta[Q/P_i]\)
+  step by step, with the mixture's atoms and KL / gap / growth diagnostics.
+- `vis_certify()` / `plot_certify()`: the branch-and-bound search: the
+  evolving cell partition, the closing enclosure window, and the search tree.
+- `vis_compare()` / `plot_compare()`: several fits of one problem
+  (Frank–Wolfe against Li–Barron, say) as overlaid KL / gap traces, against
+  oracle steps or the clock; two crossed factors can be told apart by colour
+  and line style.
 
-Planar analogues cover two-dimensional families such as
-`ripr::gaussian_family()` with polyhedral nulls, including unbounded parts
-given by vertices plus recession rays:
+The family picks the geometry: a three-category multinomial is drawn on the
+ternary simplex, a two-dimensional Gaussian (with polyhedral nulls, rays and
+all) on the plane. Each verb takes the `ripr` object itself:
 
-- `ripr_problem2d()` — the null's polyhedra and the alternative on the
-  parameter plane, with the viewport sized to the parts' vertices (plus a
-  margin) so rays simply run off the edge.
-- `ripr_fit2d()` — the same animated field view as `ripr_fit_simplex()`, with
-  the field evaluated in R on the plotting grid using the fit's own
-  quadrature.
+```r
+vis_fit(state)          # a ripr state, run with ripr_control(snapshot = "all")
+plot_fit(state, step = 3)
+```
 
-Each widget takes a plain-list payload, built either by hand or from real
-`ripr` objects with `ripr_problem_simplex_data()`, `ripr_lattice_data()`,
-`ripr_fit_simplex_data()`, `ripr_certify_simplex_data()`, `ripr_compare_data()`,
-`ripr_problem2d_data()` and `ripr_fit2d_data()`; only the data helpers touch
-`ripr`, so saved payloads render without it.
+`riprvis_payload()` extracts the plain list a view draws; saved with
+`saveRDS()`, it redraws with any `vis_*()` or `plot_*()` verb of the same
+kind, without `ripr` installed. In Shiny, `riprvisOutput()` and
+`renderRiprvis()` serve every view.
 
 ```r
 # install.packages("remotes")

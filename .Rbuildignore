@@ -17,3 +17,4 @@
 ^\.Rproj\.user$
 ^renv$
 ^renv\.lock$
+^\.devcontainer$

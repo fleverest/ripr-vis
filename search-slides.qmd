@@ -36,15 +36,15 @@ plurality <- null_model(
   family,
   lapply(2:K, function(j) {
     vertices <- diag(K)
-    vertices[, 1L] <- replace(numeric(K), c(1L, j), 0.5)
+    vertices[1L, ] <- replace(numeric(K), c(1L, j), 0.5)
     simplex_region(vertices = vertices)
   })
 )
 
 # A margin small enough that the null is not trivially far away: a wide one puts
 # the projection in a corner and both the fit and the search end immediately.
-q_plur <- matrix(c(0.40, 0.34, 0.26), ncol = 1L)
-Q_plur <- family(as.vector(q_plur))
+q_plur <- c(0.40, 0.34, 0.26)
+Q_plur <- family(q_plur)
 ```
 
 ```{r plurality-fit}
@@ -79,7 +79,7 @@ fit_plur <- ripr_finish(
 #| cache: true
 #| dependson: ["plurality-fit"]
 X_plur <- likelihood(Q_plur, label = "Q") /
-  likelihood(fit_plur$P_star, label = "P*")
+  likelihood(fit_plur@P_star, label = "P*")
 nodes_plur <- certify_trace(X_plur, plurality, tol = TOL)
 ```
 
@@ -148,14 +148,14 @@ names(fw_variants) <- paste(fw_grid$variant, fw_grid$size, sep = " · ")
 medial <- null_model(
   family,
   list(simplex_region(
-    vertices = cbind(c(0.5, 0.5, 0), c(0.5, 0, 0.5), c(0, 0.5, 0.5))
+    vertices = rbind(c(0.5, 0.5, 0), c(0.5, 0, 0.5), c(0, 0.5, 0.5))
   ))
 )
 
 # One dirac per candidate leading, equally weighted, so Q is a genuine mixture
 # rather than a single multinomial.
-q_med <- cbind(c(0.6, 0.2, 0.2), c(0.2, 0.6, 0.2), c(0.2, 0.2, 0.6))
-W_med <- finite_dist(components = q_med, weights = rep(1 / 3, 3L))
+q_med <- rbind(c(0.6, 0.2, 0.2), c(0.2, 0.6, 0.2), c(0.2, 0.2, 0.6))
+W_med <- finite_dist(atoms = q_med, weights = rep(1 / 3, 3L))
 Q_med <- family(W_med)
 ```
 
@@ -189,7 +189,7 @@ fit_med <- ripr_finish(
 #| cache: true
 #| dependson: ["medial-fit"]
 X_med <- likelihood(Q_med, label = "Q") /
-  likelihood(fit_med$P_star, label = "P*")
+  likelihood(fit_med@P_star, label = "P*")
 nodes_med <- certify_trace(X_med, medial, tol = TOL)
 ```
 
@@ -199,25 +199,25 @@ nodes_med <- certify_trace(X_med, medial, tol = TOL)
 # is one unbounded polyhedron, a cup: four vertices along its floor and two
 # recession rays running up its sides, so it is drawn in V-representation and
 # recedes past the frame rather than ending at an edge.
-gauss <- gaussian_family(dim = 2L)
+gauss <- gaussian_family(d = 2L)
 cup <- null_model(
   gauss,
   list(polyhedron_region(
-    vertices = cbind(c(-1, 0), c(-0.4, -0.6), c(0.4, -0.6), c(1, 0)),
-    rays = cbind(c(-0.3, 1), c(0.3, 1))
+    vertices = rbind(c(-1, 0), c(-0.4, -0.6), c(0.4, -0.6), c(1, 0)),
+    rays = rbind(c(-0.3, 1), c(0.3, 1))
   ))
 )
 
 # Five equally weighted atoms ringing the cup, all outside it: one under the
 # floor, one off each rim, and one flanking each ray further up.
-q_cup <- cbind(
+q_cup <- rbind(
   c(0, -1.6),
   c(-1.9, 0.3),
   c(1.9, 0.3),
   c(-2.3, 2.2),
   c(2.3, 2.2)
 )
-W_cup <- finite_dist(components = q_cup, weights = rep(1 / 5, 5L))
+W_cup <- finite_dist(atoms = q_cup, weights = rep(1 / 5, 5L))
 Q_cup <- gauss(W_cup)
 ```
 

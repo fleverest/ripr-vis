@@ -43,7 +43,7 @@ plurality <- null_model(
   family,
   lapply(2:3, function(j) {
     vertices <- diag(3)
-    vertices[, 1L] <- replace(numeric(3), c(1L, j), 0.5)
+    vertices[1L, ] <- replace(numeric(3), c(1L, j), 0.5)
     simplex_region(vertices = vertices)
   })
 )
@@ -100,7 +100,7 @@ finished <- ripr_finish(
   reoptimise = TRUE, identify = TRUE, record_gap = TRUE
 )
 x <- likelihood(family(q), label = "Q") /
-  likelihood(finished$P_star, label = "P*")
+  likelihood(finished@P_star, label = "P*")
 nodes <- certify_trace(x, plurality, tol = 1e-9)
 
 certify <- ripr_certify_simplex_data(nodes, tol = 1e-9)
@@ -154,16 +154,16 @@ viewport sizes itself to the parts' vertices (plus a margin), so the rays
 simply run off the edge and the geometry near the alternative fills the view.
 
 ```{r gaussian}
-gauss <- gaussian_family(dim = 2L)
+gauss <- gaussian_family(d = 2L)
 dart <- function(axis, sgn) {
   e <- c(0, 0)
   e[axis] <- sgn
   perp <- c(0, 0)
   perp[3L - axis] <- 1
   polyhedron_region(
-    vertices = cbind(e, 1.75 * e + 0.6 * perp, 1.75 * e - 0.6 * perp,
+    vertices = rbind(e, 1.75 * e + 0.6 * perp, 1.75 * e - 0.6 * perp,
                      2.5 * e),
-    rays = cbind(e)
+    rays = rbind(e)
   )
 }
 darts <- null_model(
@@ -193,7 +193,7 @@ state2d <- ripr_init(
   gauss(c(0, 0)), darts,
   engine = gh_engine(24L),
   atoms = list(
-    cbind(c(2.5, 0)), cbind(c(-2.5, 0)), cbind(c(0, 2.5)), cbind(c(0, -2.5))
+    rbind(c(2.5, 0)), rbind(c(-2.5, 0)), rbind(c(0, 2.5)), rbind(c(0, -2.5))
   ),
   control = ripr_control(snapshot = "all")
 )

@@ -6,7 +6,7 @@
 \alias{riprvis-package}
 \title{riprvis: Interactive Visualisations for Reverse Information Projections}
 \description{
-Interactive 'htmlwidgets' visualisations of reverse information projection (RIPr) fits and their branch-and-bound certification, as computed by the 'ripr' package for multinomial families on the two-simplex. Three widgets cover the pipeline: the problem (the null region and the alternative's support), the fit (the Bernstein field G(theta) = E[Q/P] over the simplex with per-step diagnostics), and the certification (the evolving cell partition, enclosure window and search tree). Each widget accepts a plain-list payload, so the package renders saved results without 'ripr' installed; companion data helpers build the payloads directly from 'ripr' objects.
+Interactive 'htmlwidgets' and static base-graphics visualisations of reverse information projection (RIPr) fits and their branch-and-bound certification, as computed by the 'ripr' package, for three-category multinomial families on the simplex and two-dimensional Gaussian families on the plane. Each view (the problem, the fit, the certification, and a comparison of runs) has a widget verb and a static plot verb, both drawing from a plain-list payload, so saved results draw without 'ripr' installed.
 }
 \seealso{
 Useful links:

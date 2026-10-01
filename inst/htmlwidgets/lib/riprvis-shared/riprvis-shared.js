@@ -482,6 +482,8 @@ window.RiprVis = (function () {
     el: el, rangeInput: rangeInput, tabsInput: tabsInput,
     toggleInput: toggleInput, makePlayLoop: makePlayLoop,
     stageLayout: stageLayout, readout: readout, dim: dim,
-    fitPanels: fitPanels, fitReadout: fitReadout
+    fitPanels: fitPanels, fitReadout: fitReadout,
+    // Filled by the view scripts, one renderer factory per payload kind.
+    views: {}
   };
 })();

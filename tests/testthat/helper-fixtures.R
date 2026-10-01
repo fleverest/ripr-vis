@@ -1,102 +1,75 @@
-# Plain-list stand-ins shaped like the ripr objects the prepare_*() helpers
-# duck-type against, so the payload contracts are tested without ripr
-# installed. The shapes mirror ripr::ripr_state (trace + snapshots),
-# ripr::certify_trace() (node table + trace/incumbent_trace/certificate
-# attributes) and ripr::multinomial_family (n_trials + enumerated outcomes).
+# Small real ripr fits, built once per test run and shared.
 
-# All K = 3 compositions of n: the outcome lattice of a tiny multinomial.
-tiny_outcomes <- function(n = 2L) {
-  g <- expand.grid(y1 = 0:n, y2 = 0:n)
-  g <- g[g$y1 + g$y2 <= n, ]
-  unname(as.matrix(cbind(g$y1, g$y2, n - g$y1 - g$y2)))
+fixtures <- new.env()
+
+cached <- function(name, build) {
+  if (is.null(fixtures[[name]])) fixtures[[name]] <- build()
+  fixtures[[name]]
 }
 
-tiny_family <- function(n = 2L) {
-  list(n_trials = n, outcomes = tiny_outcomes(n))
-}
-
-tiny_lattice <- function(n = 2L) {
-  ripr_lattice_data(tiny_family(n))
-}
-
-# Two snapshots of a fit, with trace rows for a fw and an em step. The second
-# trace row records no gap sweep, so its gap_after is NA and its
-# gap_after_theta all-NA -- both must serialise as null, not the string "NA".
-tiny_state <- function() {
-  list(
-    trace = data.frame(
-      step = c(1L, 2L),
-      phase = c("fw", "em"),
-      kl = c(0.5, 0.4),
-      gap_after = c(0.2, NA),
-      gap_after_theta = I(list(c(0.2, 0.5, 0.3), NA)),
-      elapsed = c(0.25, 0.5)
-    ),
-    snapshots = list(
-      list(
-        step = 1L,
-        phase = "fw",
-        atoms = rbind(c(0.2, 0.5, 0.3)),
-        weights = 1
-      ),
-      list(
-        step = 2L,
-        phase = "em",
-        atoms = rbind(c(0.2, 0.5, 0.3), c(0.1, 0.6, 0.3)),
-        weights = c(0.7, 0.3)
-      )
+# The K = 3 plurality null: candidate 1 does not win outright.
+simplex_fixture <- function() {
+  cached("simplex", function() {
+    family <- ripr::multinomial_family(n_trials = 6L, k = 3L)
+    part <- function(j) {
+      v <- diag(3)
+      v[1L, ] <- replace(numeric(3), c(1L, j), 0.5)
+      ripr::simplex_region(vertices = v)
+    }
+    null <- ripr::null_model(family, part(2) | part(3))
+    q <- c(0.4, 0.34, 0.26)
+    Q <- family(q)
+    set.seed(1L)
+    state <- ripr::ripr_init(
+      Q, null,
+      record_gap = TRUE,
+      control = ripr::ripr_control(snapshot = "all")
     )
-  )
-}
-
-# A two-cell branch-and-bound record: cell 1 split once (three nodes), cell 2
-# converged immediately (one node). Ids restart per cell, as certify_trace()
-# now records them.
-tiny_nodes <- function() {
-  tri <- function(a, b, c) rbind(a, b, c, deparse.level = 0)
-  list(
-    nodes = list(
-      part = c(1L, 1L, 1L, 2L),
-      cell = c(1L, 1L, 1L, 2L),
-      id = c(1L, 2L, 3L, 1L),
-      parent = c(NA, 1L, 1L, NA),
-      depth = c(0L, 1L, 1L, 0L),
-      born = c(0L, 1L, 1L, 0L),
-      retired = c(1L, NA, 2L, NA),
-      fate = c("split", "active", "pruned", "active"),
-      upper = c(1.5, 1.2, 1.1, 1.05),
-      volume = c(1, 0.5, 0.5, 1),
-      vertices = list(
-        tri(c(0.5, 0.5, 0), c(0, 1, 0), c(0, 0, 1)),
-        tri(c(0.5, 0.5, 0), c(0.25, 0.5, 0.25), c(0, 1, 0)),
-        tri(c(0.25, 0.5, 0.25), c(0, 1, 0), c(0, 0, 1)),
-        tri(c(0.5, 0, 0.5), c(0, 1, 0), c(0, 0, 1))
-      )
-    ),
-    trace = list(c(1.5, 1.2), c(1.05)),
-    incumbent_trace = list(c(1.0, 1.05), c(1.02)),
-    certificate = list(
-      sup_ub = 1.2,
-      sup_lb = 1.05,
-      iterations = c(2L, 1L)
+    for (i in 1:3) {
+      state <- state |>
+        ripr::fw_step(record_gap = TRUE) |>
+        ripr::em_step()
+    }
+    fit <- ripr::ripr_finish(state, reoptimise = TRUE, record_gap = TRUE)
+    x <- ripr::likelihood(Q) / ripr::likelihood(fit@P_star)
+    nodes <- ripr::certify_trace(x, null, tol = 1e-6)
+    list(
+      family = family, null = null, q = q, Q = Q,
+      state = state, fit = fit, nodes = nodes
     )
-  )
+  })
 }
 
-tiny_problem <- function() {
-  ripr_problem_simplex_data(
-    null = list(
-      rbind(c(0.5, 0.5, 0), c(0, 1, 0), c(0, 0, 1)),
-      rbind(c(0.5, 0, 0.5), c(0, 1, 0), c(0, 0, 1))
-    ),
-    q = c(0.4, 0.34, 0.26),
-    title = "tiny",
-    part_labels = c("a", "b")
-  )
+# Four darts in the plane under a Gaussian family.
+plane_fixture <- function() {
+  cached("plane", function() {
+    gauss <- ripr::gaussian_family(d = 2L)
+    dart <- function(axis, sgn) {
+      e <- c(0, 0)
+      e[axis] <- sgn
+      perp <- c(0, 0)
+      perp[3L - axis] <- 1
+      ripr::polyhedron_region(
+        vertices = rbind(e, 1.75 * e + 0.6 * perp, 1.75 * e - 0.6 * perp),
+        rays = rbind(e)
+      )
+    }
+    null <- ripr::null_model(
+      gauss, list(dart(1, 1), dart(1, -1), dart(2, 1), dart(2, -1))
+    )
+    set.seed(2L)
+    state <- ripr::ripr_init(
+      gauss(c(0, 0)), null,
+      engine = ripr::gh_engine(8L),
+      record_gap = TRUE,
+      control = ripr::ripr_control(snapshot = "all")
+    ) |>
+      ripr::fw_step(times = 2L, record_gap = TRUE)
+    list(family = gauss, null = null, state = state)
+  })
 }
 
-# Parse a payload the way the JS binding does.
-payload_of <- function(widget) {
-  jsonlite::fromJSON(widget$x$data, simplifyVector = FALSE)
+# The payload a widget would ship, parsed back the way the browser reads it.
+payload_of <- function(w) {
+  jsonlite::fromJSON(w$x$data, simplifyVector = FALSE)
 }
-

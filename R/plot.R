@@ -58,7 +58,9 @@ PART_FILL <- "#dedad0"
 PART_EDGE <- "#9c9488"
 RUN_COLOURS <- c("#2a6aa8", "#b8452f", "#2f8f6f", "#8455b0", "#b5820a")
 # The widget's dash patterns (dotted, dashed, solid, dash-dot) as R `lty`s.
-RUN_DASHES <- c("13", "63", "solid", "8323")
+RUN_DASHES <- c(
+  dotted = "13", dashed = "63", solid = "solid", "dash-dot" = "8323"
+)
 
 #' @rdname plots
 #' @export
@@ -173,11 +175,11 @@ plot_certify <- function(x, iteration = NULL, alternative = NULL,
 #' @rdname plots
 #' @export
 plot_compare <- function(runs, labels = NULL, colour_by = NULL, dash_by = NULL,
-                         y = c("both", "kl", "gap"), x = c("step", "time"),
-                         legend = TRUE) {
+                         dashes = NULL, y = c("both", "kl", "gap"),
+                         x = c("step", "time"), legend = TRUE) {
   y <- match.arg(y)
   x <- match.arg(x)
-  p <- resolve_compare(runs, labels, colour_by, dash_by)
+  p <- resolve_compare(runs, labels, colour_by, dash_by, dashes)
   panels <- if (y == "both") c("kl", "gap") else y
   if (length(panels) == 2L) {
     op <- graphics::par(mfrow = c(2L, 1L), mar = c(4, 4.5, 1, 1))
@@ -186,10 +188,18 @@ plot_compare <- function(runs, labels = NULL, colour_by = NULL, dash_by = NULL,
   colour <- function(r) {
     if (r$colour <= length(RUN_COLOURS)) RUN_COLOURS[r$colour] else EDGE
   }
-  dashes <- !is.null(p$legend$dash)
-  lty <- function(r) {
-    if (dashes) RUN_DASHES[(r$dash - 1L) %% length(RUN_DASHES) + 1L] else "solid"
+  dashed <- !is.null(p$legend$dash)
+  # The pattern of dash level i: the one the payload names for it, else the
+  # positional default, as in the widget.
+  level_lty <- function(i) {
+    named <- as.character(p$legend$dashes)
+    if (i <= length(named)) {
+      unname(RUN_DASHES[named[i]])
+    } else {
+      unname(RUN_DASHES[(i - 1L) %% length(RUN_DASHES) + 1L])
+    }
   }
+  lty <- function(r) if (dashed) level_lty(r$dash) else "solid"
   for (what in panels) {
     xs <- lapply(p$runs, function(r) as.numeric(if (x == "step") r$step else r$time))
     ys <- lapply(p$runs, function(r) as.numeric(r[[what]]))
@@ -217,7 +227,7 @@ plot_compare <- function(runs, labels = NULL, colour_by = NULL, dash_by = NULL,
   if (legend) {
     # Grouped runs are keyed by their groups, as in the widget; ungrouped
     # runs by their labels.
-    if (is.null(p$legend$colour) && !dashes) {
+    if (is.null(p$legend$colour) && !dashed) {
       lbl <- vapply(p$runs, function(r) r$label, "")
       col <- vapply(p$runs, colour, "")
       lt <- rep("solid", length(lbl))
@@ -228,7 +238,7 @@ plot_compare <- function(runs, labels = NULL, colour_by = NULL, dash_by = NULL,
       col <- c(utils::head(c(RUN_COLOURS, rep(EDGE, length(lc))), length(lc)),
                rep(INK, length(ld)))
       lt <- c(rep("solid", length(lc)),
-              RUN_DASHES[(seq_along(ld) - 1L) %% length(RUN_DASHES) + 1L])
+              vapply(seq_along(ld), level_lty, ""))
     }
     graphics::legend(
       "topright", legend = lbl, bty = "n",

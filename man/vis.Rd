@@ -43,6 +43,7 @@ vis_compare(
   labels = NULL,
   colour_by = NULL,
   dash_by = NULL,
+  dashes = NULL,
   width = NULL,
   height = NULL,
   elementId = NULL
@@ -72,7 +73,14 @@ represents. Defaults to "part 1", "part 2", ...}
 \item{labels}{Labels for the runs; defaults to \code{names(runs)}.}
 
 \item{colour_by, dash_by}{Optional groupings of the runs, one entry each:
-runs sharing a level share a colour (at most five) or dash pattern.}
+runs sharing a level share a colour (at most five) or dash pattern.
+Dash levels take, in order, a dotted, a dashed, a solid and a dash-dot
+line, so put the level the eye should rest on third.}
+
+\item{dashes}{Optional line pattern per dash level, each \code{"dotted"},
+\code{"dashed"}, \code{"solid"} or \code{"dash-dot"}: one per level in level order, or
+named by level, in which case names for levels not present are ignored.
+Needs \code{dash_by}.}
 }
 \value{
 An htmlwidget.

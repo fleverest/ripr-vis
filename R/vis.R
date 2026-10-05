@@ -34,6 +34,12 @@
 #' @param labels Labels for the runs; defaults to `names(runs)`.
 #' @param colour_by,dash_by Optional groupings of the runs, one entry each:
 #'   runs sharing a level share a colour (at most five) or dash pattern.
+#'   Dash levels take, in order, a dotted, a dashed, a solid and a dash-dot
+#'   line, so put the level the eye should rest on third.
+#' @param dashes Optional line pattern per dash level, each `"dotted"`,
+#'   `"dashed"`, `"solid"` or `"dash-dot"`: one per level in level order, or
+#'   named by level, in which case names for levels not present are ignored.
+#'   Needs `dash_by`.
 #' @param width,height,elementId Passed to [htmlwidgets::createWidget()].
 #' @return An htmlwidget.
 #' @examplesIf requireNamespace("ripr", quietly = TRUE)
@@ -84,8 +90,9 @@ vis_certify <- function(x, alternative = NULL, title = "ripr",
 #' @rdname vis
 #' @export
 vis_compare <- function(runs, labels = NULL, colour_by = NULL, dash_by = NULL,
-                        width = NULL, height = NULL, elementId = NULL) {
-  p <- resolve_compare(runs, labels, colour_by, dash_by)
+                        dashes = NULL, width = NULL, height = NULL,
+                        elementId = NULL) {
+  p <- resolve_compare(runs, labels, colour_by, dash_by, dashes)
   riprvis_widget(p, 520, width, height, elementId)
 }
 
@@ -183,7 +190,7 @@ resolve_certify <- function(x, alternative, title, part_labels) {
   certify_payload(x, alternative, title, part_labels)
 }
 
-resolve_compare <- function(runs, labels, colour_by, dash_by) {
+resolve_compare <- function(runs, labels, colour_by, dash_by, dashes = NULL) {
   if (is_payload(runs)) {
     stop_unless(
       is_payload(runs, "compare"),
@@ -191,7 +198,7 @@ resolve_compare <- function(runs, labels, colour_by, dash_by) {
     )
     return(runs)
   }
-  compare_payload(runs, labels, colour_by, dash_by)
+  compare_payload(runs, labels, colour_by, dash_by, dashes)
 }
 
 # The payload crosses as one pre-serialised string the JS side JSON.parse()s:

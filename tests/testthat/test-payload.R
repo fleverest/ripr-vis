@@ -130,3 +130,38 @@ test_that("compare counts oracle steps and groups runs", {
   expect_error(vis_compare(runs, labels = "a"), "one entry per run")
   expect_error(vis_compare(list(1)), "ripr state")
 })
+
+test_that("compare counts sweeps when a run takes no oracle step", {
+  f <- simplex_fixture()
+  trace <- f$state@trace
+  em_only <- trace[trace$phase %in% c("init", "em"), ]
+  p <- riprvis_payload(vis_compare(em_only))
+  expect_equal(as.integer(p$runs[[1]]$step), seq_len(nrow(em_only)) - 1L)
+  # With an oracle step present the EM rows share the step they refine.
+  q <- riprvis_payload(vis_compare(trace))
+  expect_equal(as.integer(q$runs[[1]]$step), cumsum(trace$phase %in% c("fw", "lb")))
+})
+
+test_that("compare carries named dash patterns in level order", {
+  f <- simplex_fixture()
+  runs <- rep(list(f$state), 3L)
+  rule <- c("line search", "fully corrective", "line search")
+  p <- riprvis_payload(vis_compare(
+    runs,
+    dash_by = rule,
+    dashes = c("fully corrective" = "solid", "line search" = "dashed", "EM" = "dotted")
+  ))
+  expect_identical(as.character(p$legend$dash), c("line search", "fully corrective"))
+  expect_identical(as.character(p$legend$dashes), c("dashed", "solid"))
+  q <- riprvis_payload(vis_compare(runs, dash_by = rule, dashes = c("dotted", "dash-dot")))
+  expect_identical(as.character(q$legend$dashes), c("dotted", "dash-dot"))
+  expect_null(riprvis_payload(vis_compare(runs, dash_by = rule))$legend$dashes)
+
+  expect_error(vis_compare(runs, dashes = "solid"), "needs `dash_by`")
+  expect_error(vis_compare(runs, dash_by = rule, dashes = "solid"), "one pattern per")
+  expect_error(
+    vis_compare(runs, dash_by = rule, dashes = c("line search" = "solid")),
+    "fully corrective"
+  )
+  expect_error(vis_compare(runs, dash_by = rule, dashes = c("solid", "wavy")), "wavy")
+})

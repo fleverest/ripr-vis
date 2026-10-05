@@ -40,4 +40,8 @@ test_that("compare draws either trace against either axis", {
       expect_no_error(draws(plot_compare(f$state, y = y, x = x)))
     }
   }
+  p <- draws(plot_compare(
+    list(f$state, f$fit), dash_by = c("a", "b"), dashes = c(b = "dotted", a = "solid")
+  ))
+  expect_identical(as.character(p$legend$dashes), c("solid", "dotted"))
 })

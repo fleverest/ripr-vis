@@ -277,7 +277,7 @@ certify_payload <- function(nodes, alternative, title, part_labels) {
 
 # --- Comparing runs -------------------------------------------------------------
 
-compare_payload <- function(runs, labels, colour_by, dash_by) {
+compare_payload <- function(runs, labels, colour_by, dash_by, dashes = NULL) {
   if (is.data.frame(runs) || inherits(runs, "S7_object")) runs <- list(runs)
   stop_unless(
     is.list(runs) && length(runs) > 0L,
@@ -295,6 +295,7 @@ compare_payload <- function(runs, labels, colour_by, dash_by) {
   )
   colour <- run_levels(colour_by, length(runs), "colour_by")
   dash <- run_levels(dash_by, length(runs), "dash_by")
+  patterns <- dash_patterns(dashes, dash)
   n_colours <- if (is.null(colour)) length(runs) else length(colour$levels)
   if (n_colours > 5L) {
     warning(
@@ -308,9 +309,14 @@ compare_payload <- function(runs, labels, colour_by, dash_by) {
     n <- nrow(trace)
     stop_unless(n > 0L, "a run has an empty trace")
     phase <- as.character(trace$phase)
+    # Oracle steps, so the many cheap weight rows of a fully-corrective run
+    # share the step they refine; a run with no oracle step at all (pure EM
+    # from a fixed support) counts its EM and weight sweeps instead.
+    counted <- phase %in% c("fw", "lb")
+    if (!any(counted)) counted <- phase %in% c("em", "weight")
     list(
       label = label,
-      step = I(cumsum(phase %in% c("fw", "lb"))),
+      step = I(cumsum(counted)),
       phase = I(phase),
       kl = I(as.numeric(trace$kl)),
       gap = I(as.numeric(trace$gap_after)),
@@ -326,6 +332,7 @@ compare_payload <- function(runs, labels, colour_by, dash_by) {
   legend <- list()
   if (!is.null(colour)) legend$colour <- I(colour$levels)
   if (!is.null(dash)) legend$dash <- I(dash$levels)
+  if (!is.null(patterns)) legend$dashes <- I(patterns)
   new_payload(
     "compare",
     runs = out,
@@ -341,6 +348,35 @@ run_levels <- function(by, n, what) {
   stop_unless(length(by) == n, "`", what, "` must have one entry per run")
   f <- if (is.factor(by)) droplevels(by) else factor(by, levels = unique(by))
   list(levels = as.character(levels(f)), index = as.integer(f))
+}
+
+# The line pattern of each dash level, in level order, or NULL for the
+# positional default. Named patterns are matched to the levels, so a caller
+# can name every rule it knows of and let absent ones drop.
+dash_patterns <- function(dashes, dash) {
+  if (is.null(dashes)) return(NULL)
+  stop_unless(!is.null(dash), "`dashes` needs `dash_by`")
+  stop_unless(is.character(dashes), "`dashes` must be a character vector")
+  if (!is.null(names(dashes))) {
+    unnamed <- setdiff(dash$levels, names(dashes))
+    stop_unless(
+      !length(unnamed),
+      "`dashes` names no pattern for dash level ",
+      paste0("`", unnamed, "`", collapse = ", ")
+    )
+    dashes <- unname(dashes[dash$levels])
+  }
+  stop_unless(
+    length(dashes) == length(dash$levels),
+    "`dashes` must give one pattern per dash level"
+  )
+  unknown <- setdiff(dashes, names(RUN_DASHES))
+  stop_unless(
+    !length(unknown),
+    "unknown dash pattern ", paste0("`", unknown, "`", collapse = ", "),
+    "; use one of ", paste0("`", names(RUN_DASHES), "`", collapse = ", ")
+  )
+  dashes
 }
 
 # A ripr_finish() result's state; anything else as is.
